@@ -1,5 +1,16 @@
 # Changelog
 
+## v1.0.4
+
+- Hardened highlight removal by re-resolving components at cleanup time instead of keeping old component references.
+- Guarded chest name lookups to reduce scan-time crash risk on unstable actors.
+- Reworked chest tracking to use initial discovery plus object-stream updates instead of a full chest rescan on every scan key press.
+- Added a lazy chest cache rebuild so chests still recover if the initial discovery ran too early.
+
+## v1.0.3
+
+- Removed the hardcoded `SimpleItemScan` folder-name requirement so the mod can run from versioned release folders too.
+
 ## v1.0.2
 
 - Added chest/container scanning.

@@ -28,6 +28,7 @@ ExecuteInGameThread(function()
 end)
 
 cache.registerItemStream()
+cache.registerChestStream()
 
 RegisterKeyBind(config.HIGHLIGHT_KEY, function()
     ExecuteInGameThread(function()

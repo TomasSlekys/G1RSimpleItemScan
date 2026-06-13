@@ -87,23 +87,6 @@ return function(config, utils)
         end
     end
 
-    function M.refreshChests()
-        if not config.HIGHLIGHT_CHESTS then
-            return
-        end
-
-        local chests = FindAllOf(config.CHEST_CLASS)
-        if not chests then
-            return
-        end
-
-        for _, chest in pairs(chests) do
-            if utils.isValid(chest) then
-                utils.addUniqueActor(M.chests, M.chestAddresses, chest)
-            end
-        end
-    end
-
     function M.rebuildAddressSets()
         M.itemAddresses = rebuildAddressSet(M.items)
         M.corpseAddresses = rebuildAddressSet(M.corpses)
@@ -116,6 +99,22 @@ return function(config, utils)
                 ExecuteInGameThread(function()
                     if utils.isValid(obj) then
                         utils.addUniqueActor(M.items, M.itemAddresses, obj)
+                    end
+                end)
+            end)
+        end)
+    end
+
+    function M.registerChestStream()
+        if not config.HIGHLIGHT_CHESTS then
+            return
+        end
+
+        pcall(function()
+            NotifyOnNewObject(config.CHEST_CLASS_PATH, function(obj)
+                ExecuteInGameThread(function()
+                    if utils.isValid(obj) then
+                        utils.addUniqueActor(M.chests, M.chestAddresses, obj)
                     end
                 end)
             end)

@@ -103,7 +103,14 @@ return function(config, utils, cache)
             return false, nil
         end
 
-        local fullName = tostring(actor:GetFullName() or "")
+        local ok, fullName = pcall(function()
+            return actor:GetFullName()
+        end)
+        if not ok then
+            return false, nil
+        end
+
+        fullName = tostring(fullName or "")
         local nameLower = string.lower(fullName)
 
         if string.find(nameLower, "worldpointactor", 1, true) then
@@ -176,14 +183,37 @@ return function(config, utils, cache)
         return true, component
     end
 
+    local function resolveHighlightedComponent(entry)
+        if type(entry) ~= "table" then
+            return nil
+        end
+
+        local actor = entry.actor
+        if not utils.isValid(actor) then
+            return nil
+        end
+
+        if type(entry.resolveComponent) ~= "function" then
+            return nil
+        end
+
+        local ok, component = pcall(entry.resolveComponent, actor)
+        if not ok or not utils.isValid(component) then
+            return nil
+        end
+
+        return component
+    end
+
     local function removeHighlights(subsystem)
         subsystem = subsystem or getOutlineSubsystem()
         if not utils.isValid(subsystem) then
             return
         end
 
-        for _, component in pairs(highlighted) do
-            if utils.isValid(component) then
+        for _, entry in pairs(highlighted) do
+            local component = resolveHighlightedComponent(entry)
+            if component then
                 pcall(function()
                     subsystem:QueueRemoveOutline(component)
                 end)
@@ -195,7 +225,7 @@ return function(config, utils, cache)
         utils.debugLog("Removed temporary outlines")
     end
 
-    local function addHighlight(subsystem, component)
+    local function addHighlight(subsystem, actor, component, resolveComponent)
         local address = utils.getAddress(component)
         if address ~= nil and highlightedByAddress[address] then
             return false
@@ -209,7 +239,10 @@ return function(config, utils, cache)
             return false
         end
 
-        highlighted[#highlighted + 1] = component
+        highlighted[#highlighted + 1] = {
+            actor = actor,
+            resolveComponent = resolveComponent,
+        }
 
         if address ~= nil then
             highlightedByAddress[address] = true
@@ -232,12 +265,13 @@ return function(config, utils, cache)
             return
         end
 
-        if #cache.items == 0 or (config.HIGHLIGHT_CORPSES and #cache.corpses == 0) then
+        if #cache.items == 0
+            or (config.HIGHLIGHT_CORPSES and #cache.corpses == 0)
+            or (config.HIGHLIGHT_CHESTS and #cache.chests == 0) then
             cache.refreshTargets()
         end
 
         cache.refreshCorpses()
-        cache.refreshChests()
 
         activeScanId = activeScanId + 1
         local scanId = activeScanId
@@ -273,7 +307,7 @@ return function(config, utils, cache)
 
                     if distanceSquared <= radiusSquared then
                         local component = utils.getInteractiveComponent(item)
-                        if component and addHighlight(subsystem, component) then
+                        if component and addHighlight(subsystem, item, component, utils.getInteractiveComponent) then
                             count = count + 1
                         end
                     end
@@ -294,7 +328,7 @@ return function(config, utils, cache)
 
                     if distanceSquared <= radiusSquared then
                         local lootable, component = isLootableCorpse(corpse, pawn)
-                        if lootable and addHighlight(subsystem, component) then
+                        if lootable and addHighlight(subsystem, corpse, component, utils.getInteractiveComponent) then
                             count = count + 1
                         end
                     end
@@ -315,7 +349,7 @@ return function(config, utils, cache)
 
                     if distanceSquared <= radiusSquared then
                         local lootable, component = isLikelyLootContainer(chest)
-                        if lootable and addHighlight(subsystem, component) then
+                        if lootable and addHighlight(subsystem, chest, component, utils.getInteractiveComponent) then
                             count = count + 1
                         end
                     end

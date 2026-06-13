@@ -63,6 +63,7 @@ return {
     ITEM_CLASS_PATH = "/Script/G1R.ItemVisualWorld",
     CORPSE_CLASS = "GothicCharacter",
     CHEST_CLASS = "InteractiveObjectActor",
+    CHEST_CLASS_PATH = "/Script/G1R.InteractiveObjectActor",
     HIGHLIGHT_KEY_NAME = highlightKeyName,
     HIGHLIGHT_KEY = Key[highlightKeyName] or Key[DEFAULT_CONFIG.highlight_key],
     RADIUS = cfgNumber("radius"),
