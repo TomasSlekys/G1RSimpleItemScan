@@ -2,16 +2,22 @@ local MOD_NAME = "SimpleItemScan"
 
 local HIGHLIGHT_KEY = Key.X
 local ITEM_CLASS = "ItemVisualWorld"
+local CORPSE_CLASS = "GothicCharacter"
 
 local RADIUS = 2500.0       -- 25 metres, Gothic/UE units
 local DURATION = 5.0        -- seconds
 local STENCIL_USAGE = 2
-local USE_THICK_OUTLINE = false
+local USE_THICK_OUTLINE = true
+local HIGHLIGHT_CORPSES = true
+local OUTLINE_ALPHA = 1.0
+local THICKNESS_MULTIPLIER = 2.0
 local DEBUG_MODE = true
 
 local highlighted = {}
 local cachedItems = {}
+local cachedCorpses = {}
 local cachedOutlineSubsystem = nil
+local outlineConfigApplied = false
 
 local function log(msg)
     print("[" .. MOD_NAME .. "] " .. msg .. "\n")
@@ -41,6 +47,13 @@ local function getProp(obj, prop)
     return nil
 end
 
+local function setProp(obj, prop, value)
+    local ok = pcall(function()
+        obj[prop] = value
+    end)
+    return ok
+end
+
 local function getOutlineSubsystem()
     if isValid(cachedOutlineSubsystem) then
         return cachedOutlineSubsystem
@@ -59,20 +72,67 @@ local function getOutlineSubsystem()
     return nil
 end
 
-local function refreshItemCache()
+local function applyOutlineConfig(subsystem)
+    if outlineConfigApplied then
+        return
+    end
+
+    subsystem = subsystem or getOutlineSubsystem()
+    if not isValid(subsystem) then
+        return
+    end
+
+    local config = getProp(subsystem, "Config")
+    if not isValid(config) then
+        return
+    end
+
+    local closestThickness = getProp(config, "OutlineClosestThickness")
+    local farthestThickness = getProp(config, "OutlineFarthestThickness")
+
+    setProp(config, "OutlineClosestAlpha", OUTLINE_ALPHA)
+    setProp(config, "OutlineFarthestAlpha", OUTLINE_ALPHA)
+
+    if type(closestThickness) == "number" then
+        setProp(config, "OutlineClosestThickness", closestThickness * THICKNESS_MULTIPLIER)
+    end
+
+    if type(farthestThickness) == "number" then
+        setProp(config, "OutlineFarthestThickness", farthestThickness * THICKNESS_MULTIPLIER)
+    end
+
+    outlineConfigApplied = true
+    debugLog("Applied outline visibility config")
+end
+
+local function refreshTargetCache()
     local items = FindAllOf(ITEM_CLASS)
-    local fresh = {}
+    local freshItems = {}
+    local freshCorpses = {}
 
     if items then
         for _, item in pairs(items) do
             if isValid(item) then
-                fresh[#fresh + 1] = item
+                freshItems[#freshItems + 1] = item
             end
         end
     end
 
-    cachedItems = fresh
-    debugLog("Cached " .. tostring(#cachedItems) .. " item(s)")
+    if HIGHLIGHT_CORPSES then
+        local corpses = FindAllOf(CORPSE_CLASS)
+
+        if corpses then
+            for _, corpse in pairs(corpses) do
+                if isValid(corpse) then
+                    freshCorpses[#freshCorpses + 1] = corpse
+                end
+            end
+        end
+    end
+
+    cachedItems = freshItems
+    cachedCorpses = freshCorpses
+    debugLog("Cached " .. tostring(#cachedItems) .. " item(s) and " .. tostring(#cachedCorpses) .. " corpse(s)")
 end
 
 local function getPlayerPawn()
@@ -113,6 +173,48 @@ local function getLocation(actor)
     return nil
 end
 
+local function getInteractiveComponent(actor)
+    local component = getProp(actor, "m_InteractiveComponent")
+    if isValid(component) then
+        return component
+    end
+    return nil
+end
+
+local function isLootableCorpse(actor, pawn)
+    if not HIGHLIGHT_CORPSES or not isValid(actor) then
+        return false, nil
+    end
+
+    if pawn ~= nil and actor == pawn then
+        return false, nil
+    end
+
+    local ragdollComponent = getProp(actor, "m_RagdollComponent")
+    if not isValid(ragdollComponent) then
+        return false, nil
+    end
+
+    if getProp(ragdollComponent, "m_IsRagdollActive") ~= true then
+        return false, nil
+    end
+
+    local component = getInteractiveComponent(actor)
+    if not component then
+        return false, nil
+    end
+
+    if getProp(component, "m_ForceDisableInteraction") == true then
+        return false, nil
+    end
+
+    if getProp(component, "m_CanBeUsed") == false then
+        return false, nil
+    end
+
+    return true, component
+end
+
 local function removeHighlights(subsystem)
     subsystem = subsystem or getOutlineSubsystem()
     if not isValid(subsystem) then return end
@@ -143,6 +245,11 @@ local function scanAndHighlight()
         return
     end
 
+    if #cachedItems == 0 and (not HIGHLIGHT_CORPSES or #cachedCorpses == 0) then
+        refreshTargetCache()
+    end
+
+    applyOutlineConfig(subsystem)
     removeHighlights(subsystem)
 
     pcall(function()
@@ -158,6 +265,7 @@ local function scanAndHighlight()
     local radiusSquared = RADIUS * RADIUS
     local count = 0
     local activeItems = {}
+    local activeCorpses = {}
 
     for _, item in ipairs(cachedItems) do
         if isValid(item) then
@@ -171,9 +279,38 @@ local function scanAndHighlight()
                 local distanceSquared = dx * dx + dy * dy + dz * dz
 
                 if distanceSquared <= radiusSquared then
-                    local component = getProp(item, "m_InteractiveComponent")
+                    local component = getInteractiveComponent(item)
 
-                    if isValid(component) then
+                    if component then
+                        local ok = pcall(function()
+                            subsystem:AddOutline(component, STENCIL_USAGE, USE_THICK_OUTLINE)
+                        end)
+
+                        if ok then
+                            highlighted[#highlighted + 1] = component
+                            count = count + 1
+                        end
+                    end
+                end
+            end
+        end
+    end
+
+    for _, corpse in ipairs(cachedCorpses) do
+        if isValid(corpse) then
+            activeCorpses[#activeCorpses + 1] = corpse
+            local cx, cy, cz = getLocation(corpse)
+
+            if cx then
+                local dx = cx - px
+                local dy = cy - py
+                local dz = cz - pz
+                local distanceSquared = dx * dx + dy * dy + dz * dz
+
+                if distanceSquared <= radiusSquared then
+                    local lootable, component = isLootableCorpse(corpse, pawn)
+
+                    if lootable then
                         local ok = pcall(function()
                             subsystem:AddOutline(component, STENCIL_USAGE, USE_THICK_OUTLINE)
                         end)
@@ -189,12 +326,9 @@ local function scanAndHighlight()
     end
 
     cachedItems = activeItems
+    cachedCorpses = activeCorpses
 
-    if #cachedItems == 0 then
-        refreshItemCache()
-    end
-
-    debugLog("Highlighted " .. tostring(count) .. " nearby item(s)")
+    debugLog("Highlighted " .. tostring(count) .. " nearby target(s)")
 
     ExecuteWithDelay(math.floor(DURATION * 1000), function()
         ExecuteInGameThread(function()
@@ -203,11 +337,11 @@ local function scanAndHighlight()
     end)
 end
 
-log("Loaded. Press X to temporarily highlight nearby items.")
+log("Loaded. Press X to temporarily highlight nearby items and lootable corpses.")
 debugLog("Debug mode enabled")
 
 ExecuteInGameThread(function()
-    refreshItemCache()
+    refreshTargetCache()
 end)
 
 RegisterKeyBind(HIGHLIGHT_KEY, function()
