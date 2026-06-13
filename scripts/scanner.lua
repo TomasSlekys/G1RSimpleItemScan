@@ -6,6 +6,10 @@ return function(config, utils, cache)
     local cachedOutlineSubsystem = nil
     local outlineConfigApplied = false
     local activeScanId = 0
+    local chestKeywords = {
+        "chest", "box", "barrel", "basket", "container", "safe", "crate",
+        "cupboard", "wardrobe", "locker", "urn", "tomb", "sarcophagus"
+    }
 
     local function getOutlineSubsystem()
         if utils.isValid(cachedOutlineSubsystem) then
@@ -94,6 +98,84 @@ return function(config, utils, cache)
         return true, component
     end
 
+    local function isLikelyLootContainer(actor)
+        if not config.HIGHLIGHT_CHESTS or not utils.isValid(actor) then
+            return false, nil
+        end
+
+        local fullName = tostring(actor:GetFullName() or "")
+        local nameLower = string.lower(fullName)
+
+        if string.find(nameLower, "worldpointactor", 1, true) then
+            return false, nil
+        end
+
+        if string.find(nameLower, "itai", 1, true) then
+            return false, nil
+        end
+
+        if string.find(nameLower, "sit", 1, true)
+            or string.find(nameLower, "bench", 1, true)
+            or string.find(nameLower, "chair", 1, true)
+            or string.find(nameLower, "bed", 1, true)
+            or string.find(nameLower, "door", 1, true)
+            or string.find(nameLower, "lever", 1, true)
+            or string.find(nameLower, "button", 1, true)
+            or string.find(nameLower, "ladder", 1, true)
+            or string.find(nameLower, "wheel", 1, true)
+            or string.find(nameLower, "gate", 1, true) then
+            return false, nil
+        end
+
+        local matchesKeyword = false
+        for _, keyword in ipairs(chestKeywords) do
+            if string.find(nameLower, keyword, 1, true) then
+                matchesKeyword = true
+                break
+            end
+        end
+
+        if not matchesKeyword then
+            return false, nil
+        end
+
+        local hasLootData = false
+        if utils.getProp(actor, "m_Inventory") ~= nil
+            or utils.getProp(actor, "m_Items") ~= nil
+            or utils.getProp(actor, "m_LootTable") ~= nil then
+            hasLootData = true
+        end
+
+        local component = utils.getInteractiveComponent(actor)
+        if component and not hasLootData then
+            if utils.getProp(component, "m_Inventory") ~= nil
+                or utils.getProp(component, "m_Items") ~= nil
+                or utils.getProp(component, "m_LootTable") ~= nil then
+                hasLootData = true
+            end
+        end
+
+        if not hasLootData then
+            if utils.getProp(actor, "m_Locked") == true then
+                hasLootData = true
+            else
+                local keyName = utils.getProp(actor, "m_KeyName")
+                if keyName ~= nil then
+                    local keyString = tostring(keyName)
+                    if keyString ~= "" and keyString ~= "None" then
+                        hasLootData = true
+                    end
+                end
+            end
+        end
+
+        if not component or not hasLootData then
+            return false, nil
+        end
+
+        return true, component
+    end
+
     local function removeHighlights(subsystem)
         subsystem = subsystem or getOutlineSubsystem()
         if not utils.isValid(subsystem) then
@@ -155,6 +237,7 @@ return function(config, utils, cache)
         end
 
         cache.refreshCorpses()
+        cache.refreshChests()
 
         activeScanId = activeScanId + 1
         local scanId = activeScanId
@@ -175,6 +258,7 @@ return function(config, utils, cache)
         local count = 0
         local activeItems = {}
         local activeCorpses = {}
+        local activeChests = {}
 
         for _, item in ipairs(cache.items) do
             if utils.isValid(item) then
@@ -218,8 +302,30 @@ return function(config, utils, cache)
             end
         end
 
+        for _, chest in ipairs(cache.chests) do
+            if utils.isValid(chest) then
+                activeChests[#activeChests + 1] = chest
+                local cx, cy, cz = utils.getLocation(chest)
+
+                if cx then
+                    local dx = cx - px
+                    local dy = cy - py
+                    local dz = cz - pz
+                    local distanceSquared = dx * dx + dy * dy + dz * dz
+
+                    if distanceSquared <= radiusSquared then
+                        local lootable, component = isLikelyLootContainer(chest)
+                        if lootable and addHighlight(subsystem, component) then
+                            count = count + 1
+                        end
+                    end
+                end
+            end
+        end
+
         cache.items = activeItems
         cache.corpses = activeCorpses
+        cache.chests = activeChests
         cache.rebuildAddressSets()
 
         utils.debugLog("Highlighted " .. tostring(count) .. " nearby target(s)")

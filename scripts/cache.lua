@@ -2,8 +2,10 @@ return function(config, utils)
     local M = {
         items = {},
         corpses = {},
+        chests = {},
         itemAddresses = {},
         corpseAddresses = {},
+        chestAddresses = {},
     }
 
     local function rebuildAddressSet(actors)
@@ -23,8 +25,10 @@ return function(config, utils)
         local items = FindAllOf(config.ITEM_CLASS)
         local freshItems = {}
         local freshCorpses = {}
+        local freshChests = {}
         local freshItemAddresses = {}
         local freshCorpseAddresses = {}
+        local freshChestAddresses = {}
 
         if items then
             for _, item in pairs(items) do
@@ -45,12 +49,25 @@ return function(config, utils)
             end
         end
 
+        if config.HIGHLIGHT_CHESTS then
+            local chests = FindAllOf(config.CHEST_CLASS)
+            if chests then
+                for _, chest in pairs(chests) do
+                    if utils.isValid(chest) then
+                        utils.addUniqueActor(freshChests, freshChestAddresses, chest)
+                    end
+                end
+            end
+        end
+
         M.items = freshItems
         M.corpses = freshCorpses
+        M.chests = freshChests
         M.itemAddresses = freshItemAddresses
         M.corpseAddresses = freshCorpseAddresses
+        M.chestAddresses = freshChestAddresses
 
-        utils.debugLog("Cached " .. tostring(#M.items) .. " item(s) and " .. tostring(#M.corpses) .. " corpse(s)")
+        utils.debugLog("Cached " .. tostring(#M.items) .. " item(s), " .. tostring(#M.corpses) .. " corpse(s), and " .. tostring(#M.chests) .. " chest(s)")
     end
 
     function M.refreshCorpses()
@@ -70,9 +87,27 @@ return function(config, utils)
         end
     end
 
+    function M.refreshChests()
+        if not config.HIGHLIGHT_CHESTS then
+            return
+        end
+
+        local chests = FindAllOf(config.CHEST_CLASS)
+        if not chests then
+            return
+        end
+
+        for _, chest in pairs(chests) do
+            if utils.isValid(chest) then
+                utils.addUniqueActor(M.chests, M.chestAddresses, chest)
+            end
+        end
+    end
+
     function M.rebuildAddressSets()
         M.itemAddresses = rebuildAddressSet(M.items)
         M.corpseAddresses = rebuildAddressSet(M.corpses)
+        M.chestAddresses = rebuildAddressSet(M.chests)
     end
 
     function M.registerItemStream()

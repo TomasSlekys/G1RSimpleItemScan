@@ -23,6 +23,9 @@ return {
     -- When false, the mod only highlights world items.
     highlight_corpses = true,
 
+    -- When true, chests are included in scans.
+    highlight_chests = true,
+
     -- Outline opacity applied to the outline subsystem config.
     -- 1.0 = fully solid, lower values make the outline fainter.
     outline_alpha = 1.0,
