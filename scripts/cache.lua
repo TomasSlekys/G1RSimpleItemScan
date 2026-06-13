@@ -6,6 +6,19 @@ return function(config, utils)
         corpseAddresses = {},
     }
 
+    local function rebuildAddressSet(actors)
+        local addresses = {}
+
+        for _, actor in ipairs(actors) do
+            local address = utils.getAddress(actor)
+            if address ~= nil then
+                addresses[address] = true
+            end
+        end
+
+        return addresses
+    end
+
     function M.refreshTargets()
         local items = FindAllOf(config.ITEM_CLASS)
         local freshItems = {}
@@ -58,16 +71,8 @@ return function(config, utils)
     end
 
     function M.rebuildAddressSets()
-        M.itemAddresses = {}
-        M.corpseAddresses = {}
-
-        for _, item in ipairs(M.items) do
-            utils.addUniqueActor({}, M.itemAddresses, item)
-        end
-
-        for _, corpse in ipairs(M.corpses) do
-            utils.addUniqueActor({}, M.corpseAddresses, corpse)
-        end
+        M.itemAddresses = rebuildAddressSet(M.items)
+        M.corpseAddresses = rebuildAddressSet(M.corpses)
     end
 
     function M.registerItemStream()
