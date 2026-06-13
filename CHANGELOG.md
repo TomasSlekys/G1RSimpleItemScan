@@ -2,10 +2,9 @@
 
 ## v1.0.4
 
-- Hardened highlight removal by re-resolving components at cleanup time instead of keeping old component references.
-- Guarded chest name lookups to reduce scan-time crash risk on unstable actors.
-- Reworked chest tracking to use initial discovery plus object-stream updates instead of a full chest rescan on every scan key press.
-- Added a lazy chest cache rebuild so chests still recover if the initial discovery ran too early.
+- Improved stability to reduce crashes during repeated scans.
+- Smoothed out scan performance so pressing the scan key causes less stutter.
+- Improved chest detection so chests recover more reliably after loading into the world.
 
 ## v1.0.3
 
