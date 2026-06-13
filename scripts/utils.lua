@@ -43,6 +43,13 @@ return function(modName, debugMode)
         return ok
     end
 
+    function M.getNumber(value)
+        if type(value) == "number" then
+            return value
+        end
+        return nil
+    end
+
     function M.getAddress(obj)
         if not M.isValid(obj) then
             return nil
@@ -67,8 +74,13 @@ return function(modName, debugMode)
         local root = M.getProp(actor, "RootComponent")
         if root then
             local loc = M.getProp(root, "RelativeLocation")
-            if loc and loc.X and loc.Y and loc.Z then
-                return loc.X, loc.Y, loc.Z
+            if loc then
+                local x = M.getNumber(loc.X)
+                local y = M.getNumber(loc.Y)
+                local z = M.getNumber(loc.Z)
+                if x ~= nil and y ~= nil and z ~= nil then
+                    return x, y, z
+                end
             end
         end
 
@@ -76,8 +88,13 @@ return function(modName, debugMode)
             return actor:K2_GetActorLocation()
         end)
 
-        if ok and loc and loc.X and loc.Y and loc.Z then
-            return loc.X, loc.Y, loc.Z
+        if ok and loc then
+            local x = M.getNumber(loc.X)
+            local y = M.getNumber(loc.Y)
+            local z = M.getNumber(loc.Z)
+            if x ~= nil and y ~= nil and z ~= nil then
+                return x, y, z
+            end
         end
 
         return nil
