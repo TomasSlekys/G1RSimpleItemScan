@@ -4,8 +4,8 @@ SimpleItemScan is a lightweight Gothic 1 Remake Lua mod that scans for nearby lo
 
 Installation instructions
 
-1. Copy the `SimpleItemScan` mod folder into your game's `Mods` directory.
-2. Make sure the mod's Lua files are inside `Mods/SimpleItemScan/Scripts/`.
+1. Copy the mod folder into your game's `Mods` directory. The folder name can be anything.
+2. Make sure the mod's Lua files are inside that folder's `Scripts` directory.
 3. Start the game with UE4SS / your Lua mod loader enabled.
 4. Enable `Accessibility > Object Outliner` in the game's settings.
 5. Edit `Scripts/config.lua` if you want to change the scan key, radius, duration, or outline settings.

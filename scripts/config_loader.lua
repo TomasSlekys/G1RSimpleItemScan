@@ -11,7 +11,21 @@ local DEFAULT_CONFIG = {
     debug_mode = true,
 }
 
-local SCRIPT_ROOT = "Mods/SimpleItemScan/Scripts/"
+local function scriptRoot()
+    local source = debug.getinfo(1, "S").source
+    if type(source) ~= "string" then
+        return "Mods/SimpleItemScan/Scripts/"
+    end
+
+    if source:sub(1, 1) == "@" then
+        source = source:sub(2)
+    end
+
+    local normalized = source:gsub("\\", "/")
+    return normalized:match("^(.*)/") .. "/"
+end
+
+local SCRIPT_ROOT = scriptRoot()
 
 local localConfig = {}
 pcall(function()

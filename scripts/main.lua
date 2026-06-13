@@ -1,6 +1,19 @@
-local MOD_NAME = "SimpleItemScan"
+local function scriptRoot()
+    local source = debug.getinfo(1, "S").source
+    if type(source) ~= "string" then
+        return "Mods/SimpleItemScan/Scripts/"
+    end
 
-local SCRIPT_ROOT = "Mods/SimpleItemScan/Scripts/"
+    if source:sub(1, 1) == "@" then
+        source = source:sub(2)
+    end
+
+    local normalized = source:gsub("\\", "/")
+    return normalized:match("^(.*)/") .. "/"
+end
+
+local SCRIPT_ROOT = scriptRoot()
+local MOD_NAME = SCRIPT_ROOT:match("/Mods/([^/]+)/Scripts/$") or "SimpleItemScan"
 
 local config = dofile(SCRIPT_ROOT .. "config_loader.lua")
 local utils = dofile(SCRIPT_ROOT .. "utils.lua")(MOD_NAME, config.DEBUG_MODE)
