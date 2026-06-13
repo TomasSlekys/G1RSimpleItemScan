@@ -1,14 +1,17 @@
 local MOD_NAME = "SimpleItemScan"
 
-local HIGHLIGHT_KEY = Key.F6
+local HIGHLIGHT_KEY = Key.X
 local ITEM_CLASS = "ItemVisualWorld"
 
 local RADIUS = 2500.0       -- 25 metres, Gothic/UE units
 local DURATION = 5.0        -- seconds
 local STENCIL_USAGE = 2
 local USE_THICK_OUTLINE = false
+local DEBUG_MODE = true
 
 local highlighted = {}
+local cachedItems = {}
+local cachedOutlineSubsystem = nil
 
 local function log(msg)
     print("[" .. MOD_NAME .. "] " .. msg .. "\n")
@@ -22,6 +25,14 @@ local function isValid(obj)
     return ok and valid
 end
 
+local function debugLog(msg)
+    if not DEBUG_MODE then
+        return
+    end
+
+    log(msg)
+end
+
 local function getProp(obj, prop)
     local ok, value = pcall(function()
         return obj[prop]
@@ -31,16 +42,37 @@ local function getProp(obj, prop)
 end
 
 local function getOutlineSubsystem()
+    if isValid(cachedOutlineSubsystem) then
+        return cachedOutlineSubsystem
+    end
+
     local list = FindAllOf("OutlineSubsystem")
     if not list then return nil end
 
     for _, obj in pairs(list) do
         if isValid(obj) then
+            cachedOutlineSubsystem = obj
             return obj
         end
     end
 
     return nil
+end
+
+local function refreshItemCache()
+    local items = FindAllOf(ITEM_CLASS)
+    local fresh = {}
+
+    if items then
+        for _, item in pairs(items) do
+            if isValid(item) then
+                fresh[#fresh + 1] = item
+            end
+        end
+    end
+
+    cachedItems = fresh
+    debugLog("Cached " .. tostring(#cachedItems) .. " item(s)")
 end
 
 local function getPlayerPawn()
@@ -81,8 +113,8 @@ local function getLocation(actor)
     return nil
 end
 
-local function removeHighlights()
-    local subsystem = getOutlineSubsystem()
+local function removeHighlights(subsystem)
+    subsystem = subsystem or getOutlineSubsystem()
     if not isValid(subsystem) then return end
 
     for _, component in pairs(highlighted) do
@@ -94,7 +126,7 @@ local function removeHighlights()
     end
 
     highlighted = {}
-    log("Removed temporary outlines")
+    debugLog("Removed temporary outlines")
 end
 
 local function scanAndHighlight()
@@ -102,16 +134,16 @@ local function scanAndHighlight()
     local pawn = getPlayerPawn()
 
     if not isValid(subsystem) then
-        log("OutlineSubsystem not found")
+        debugLog("OutlineSubsystem not found")
         return
     end
 
     if not isValid(pawn) then
-        log("Player pawn not found")
+        debugLog("Player pawn not found")
         return
     end
 
-    removeHighlights()
+    removeHighlights(subsystem)
 
     pcall(function()
         subsystem:SetIsSystemEnabled(true)
@@ -119,38 +151,36 @@ local function scanAndHighlight()
 
     local px, py, pz = getLocation(pawn)
     if not px then
-        log("Player location not found")
+        debugLog("Player location not found")
         return
     end
 
     local radiusSquared = RADIUS * RADIUS
     local count = 0
+    local activeItems = {}
 
-    local items = FindAllOf(ITEM_CLASS)
+    for _, item in ipairs(cachedItems) do
+        if isValid(item) then
+            activeItems[#activeItems + 1] = item
+            local ix, iy, iz = getLocation(item)
 
-    if items then
-        for _, item in pairs(items) do
-            if isValid(item) then
-                local ix, iy, iz = getLocation(item)
+            if ix then
+                local dx = ix - px
+                local dy = iy - py
+                local dz = iz - pz
+                local distanceSquared = dx * dx + dy * dy + dz * dz
 
-                if ix then
-                    local dx = ix - px
-                    local dy = iy - py
-                    local dz = iz - pz
-                    local distanceSquared = dx * dx + dy * dy + dz * dz
+                if distanceSquared <= radiusSquared then
+                    local component = getProp(item, "m_InteractiveComponent")
 
-                    if distanceSquared <= radiusSquared then
-                        local component = getProp(item, "m_InteractiveComponent")
+                    if isValid(component) then
+                        local ok = pcall(function()
+                            subsystem:AddOutline(component, STENCIL_USAGE, USE_THICK_OUTLINE)
+                        end)
 
-                        if isValid(component) then
-                            local ok = pcall(function()
-                                subsystem:AddOutline(component, STENCIL_USAGE, USE_THICK_OUTLINE)
-                            end)
-
-                            if ok then
-                                highlighted[#highlighted + 1] = component
-                                count = count + 1
-                            end
+                        if ok then
+                            highlighted[#highlighted + 1] = component
+                            count = count + 1
                         end
                     end
                 end
@@ -158,7 +188,13 @@ local function scanAndHighlight()
         end
     end
 
-    log("Highlighted " .. tostring(count) .. " nearby item(s)")
+    cachedItems = activeItems
+
+    if #cachedItems == 0 then
+        refreshItemCache()
+    end
+
+    debugLog("Highlighted " .. tostring(count) .. " nearby item(s)")
 
     ExecuteWithDelay(math.floor(DURATION * 1000), function()
         ExecuteInGameThread(function()
@@ -167,7 +203,12 @@ local function scanAndHighlight()
     end)
 end
 
-log("Loaded. Press F6 to temporarily highlight nearby items.")
+log("Loaded. Press X to temporarily highlight nearby items.")
+debugLog("Debug mode enabled")
+
+ExecuteInGameThread(function()
+    refreshItemCache()
+end)
 
 RegisterKeyBind(HIGHLIGHT_KEY, function()
     ExecuteInGameThread(function()
