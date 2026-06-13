@@ -8,7 +8,8 @@ Installation instructions
 2. Make sure the mod's Lua files are inside `Mods/SimpleItemScan/Scripts/`.
 3. Enable the mod in `Gothic 1 Remake\G1R\Binaries\Win64\Mods\mods.txt`.
 4. Start the game with UE4SS / your Lua mod loader enabled.
-5. Edit `Scripts/config.lua` if you want to change the scan key, radius, duration, or outline settings.
+5. Enable `Accessibility > Object Outliner` in the game's settings.
+6. Edit `Scripts/config.lua` if you want to change the scan key, radius, duration, or outline settings.
 
 Main features
 
