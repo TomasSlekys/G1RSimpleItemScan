@@ -111,6 +111,67 @@ return function(config, utils, cache)
             utils.setProp(configObject, "OutlineFarthestThickness", farthestThickness * config.THICKNESS_MULTIPLIER)
         end
 
+        local stencilMap = utils.getProp(configObject, "StencilOutlineData")
+        if stencilMap ~= nil and type(config.OUTLINE_COLOR) == "table" then
+            local currentFn = nil
+
+            local function stencilForEachCallback(_, valueProxy)
+                if currentFn == nil then
+                    return
+                end
+
+                local value = valueProxy
+                local okGet = pcall(function()
+                    local unwrapped = valueProxy:get()
+                    if unwrapped ~= nil then
+                        value = unwrapped
+                    end
+                end)
+
+                if not okGet then
+                    value = valueProxy
+                end
+
+                local color = utils.getProp(value, "Color")
+                if color ~= nil then
+                    currentFn(color, value)
+                end
+            end
+
+            local function eachStencilColor(fn)
+                currentFn = fn
+                local ok = pcall(function()
+                    stencilMap:ForEach(stencilForEachCallback)
+                end)
+                currentFn = nil
+                return ok
+            end
+
+            local function applyStencilColor(color, value)
+                utils.setProp(color, "R", config.OUTLINE_COLOR[1])
+                utils.setProp(color, "G", config.OUTLINE_COLOR[2])
+                utils.setProp(color, "B", config.OUTLINE_COLOR[3])
+                utils.setProp(color, "A", config.OUTLINE_ALPHA)
+                utils.setProp(value, "Color", color)
+            end
+
+            local pushed = false
+            local changed = eachStencilColor(applyStencilColor)
+            if changed then
+                pcall(function()
+                    local world = subsystem:GetWorld()
+                    if world ~= nil then
+                        configObject:UpdateColorTable(world)
+                        pushed = true
+                    end
+                end)
+            end
+
+            if pushed then
+                utils.debugLog("Applied custom outline color")
+            end
+        end
+
         outlineConfigApplied = true
         utils.debugLog("Applied outline visibility config")
     end

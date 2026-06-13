@@ -56,7 +56,23 @@ local function cfgString(name)
     return DEFAULT_CONFIG[name]
 end
 
+local function cfgColor(name, fallback)
+    local value = localConfig[name]
+    if type(value) == "table"
+        and type(value[1]) == "number"
+        and type(value[2]) == "number"
+        and type(value[3]) == "number" then
+        return {
+            value[1],
+            value[2],
+            value[3],
+        }
+    end
+    return fallback
+end
+
 local highlightKeyName = cfgString("highlight_key")
+local outlineColor = cfgColor("outline_color", { 1.0, 0.85, 0.2 })
 
 return {
     ITEM_CLASS = "ItemVisualWorld",
@@ -73,6 +89,7 @@ return {
     HIGHLIGHT_CORPSES = cfgBoolean("highlight_corpses"),
     HIGHLIGHT_CHESTS = cfgBoolean("highlight_chests"),
     OUTLINE_ALPHA = cfgNumber("outline_alpha"),
+    OUTLINE_COLOR = outlineColor,
     THICKNESS_MULTIPLIER = cfgNumber("thickness_multiplier"),
     DEBUG_MODE = cfgBoolean("debug_mode"),
 }

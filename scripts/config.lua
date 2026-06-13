@@ -30,6 +30,11 @@ return {
     -- 1.0 = fully solid, lower values make the outline fainter.
     outline_alpha = 1.0,
 
+    -- Optional custom outline color.
+    -- Values use 0.0 to 1.0 for red, green, and blue.
+    -- Example: { 0.2, 0.55, 1.0 } gives a blue outline.
+    outline_color = { 1.0, 1.0, 1.0 },
+
     -- Multiplies the game's default outline thickness.
     -- 1.0 keeps the vanilla width, 2.0 is thicker and easier to see.
     thickness_multiplier = 2.0,

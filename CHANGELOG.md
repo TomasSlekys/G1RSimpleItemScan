@@ -5,6 +5,7 @@
 - Improved stability to reduce crashes during repeated scans.
 - Smoothed out scan performance so pressing the scan key causes less stutter.
 - Improved chest detection so chests recover more reliably after loading into the world.
+- Added a configurable custom outline color.
 
 ## v1.0.3
 
