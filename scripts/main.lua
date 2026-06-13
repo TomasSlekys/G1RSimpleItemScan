@@ -1,18 +1,60 @@
 local MOD_NAME = "SimpleItemScan"
 
-local HIGHLIGHT_KEY = Key.X
 local ITEM_CLASS = "ItemVisualWorld"
 local ITEM_CLASS_PATH = "/Script/G1R.ItemVisualWorld"
 local CORPSE_CLASS = "GothicCharacter"
 
-local RADIUS = 2500.0       -- 25 metres, Gothic/UE units
-local DURATION = 5.0        -- seconds
-local STENCIL_USAGE = 2
-local USE_THICK_OUTLINE = true
-local HIGHLIGHT_CORPSES = true
-local OUTLINE_ALPHA = 1.0
-local THICKNESS_MULTIPLIER = 2.0
-local DEBUG_MODE = true
+local DEFAULT_CONFIG = {
+    highlight_key = "X",
+    radius = 2500.0,
+    duration = 5.0,
+    stencil_usage = 2,
+    use_thick_outline = true,
+    highlight_corpses = true,
+    outline_alpha = 1.0,
+    thickness_multiplier = 2.0,
+    debug_mode = true,
+}
+
+local localConfig = {}
+pcall(function()
+    localConfig = dofile("scripts/config.lua") or {}
+end)
+
+local function cfgNumber(name)
+    local value = localConfig[name]
+    if type(value) == "number" then
+        return value
+    end
+    return DEFAULT_CONFIG[name]
+end
+
+local function cfgBoolean(name)
+    local value = localConfig[name]
+    if type(value) == "boolean" then
+        return value
+    end
+    return DEFAULT_CONFIG[name]
+end
+
+local function cfgString(name)
+    local value = localConfig[name]
+    if type(value) == "string" and value ~= "" then
+        return value
+    end
+    return DEFAULT_CONFIG[name]
+end
+
+local HIGHLIGHT_KEY_NAME = cfgString("highlight_key")
+local HIGHLIGHT_KEY = Key[HIGHLIGHT_KEY_NAME] or Key[DEFAULT_CONFIG.highlight_key]
+local RADIUS = cfgNumber("radius")
+local DURATION = cfgNumber("duration")
+local STENCIL_USAGE = cfgNumber("stencil_usage")
+local USE_THICK_OUTLINE = cfgBoolean("use_thick_outline")
+local HIGHLIGHT_CORPSES = cfgBoolean("highlight_corpses")
+local OUTLINE_ALPHA = cfgNumber("outline_alpha")
+local THICKNESS_MULTIPLIER = cfgNumber("thickness_multiplier")
+local DEBUG_MODE = cfgBoolean("debug_mode")
 
 local highlighted = {}
 local highlightedByAddress = {}
@@ -403,7 +445,7 @@ local function scanAndHighlight()
     end)
 end
 
-log("Loaded. Press X to temporarily highlight nearby items and lootable corpses.")
+log("Loaded. Press " .. HIGHLIGHT_KEY_NAME .. " to temporarily highlight nearby items and lootable corpses.")
 debugLog("Debug mode enabled")
 
 ExecuteInGameThread(function()
