@@ -4,7 +4,9 @@ return function(config, utils, cache)
     local highlighted = {}
     local highlightedByAddress = {}
     local cachedOutlineSubsystem = nil
-    local outlineConfigApplied = false
+    local configuredOutlineConfigAddress = nil
+    local baseClosestThickness = nil
+    local baseFarthestThickness = nil
     local activeScanId = 0
     local itemLocationCache = {}
     local chestLocationCache = {}
@@ -83,10 +85,6 @@ return function(config, utils, cache)
     end
 
     local function applyOutlineConfig(subsystem)
-        if outlineConfigApplied then
-            return
-        end
-
         subsystem = subsystem or getOutlineSubsystem()
         if not utils.isValid(subsystem) then
             return
@@ -97,18 +95,22 @@ return function(config, utils, cache)
             return
         end
 
-        local closestThickness = utils.getProp(configObject, "OutlineClosestThickness")
-        local farthestThickness = utils.getProp(configObject, "OutlineFarthestThickness")
+        local configAddress = utils.getAddress(configObject)
+        if configAddress ~= configuredOutlineConfigAddress then
+            configuredOutlineConfigAddress = configAddress
+            baseClosestThickness = utils.getProp(configObject, "OutlineClosestThickness")
+            baseFarthestThickness = utils.getProp(configObject, "OutlineFarthestThickness")
+        end
 
         utils.setProp(configObject, "OutlineClosestAlpha", config.OUTLINE_ALPHA)
         utils.setProp(configObject, "OutlineFarthestAlpha", config.OUTLINE_ALPHA)
 
-        if type(closestThickness) == "number" then
-            utils.setProp(configObject, "OutlineClosestThickness", closestThickness * config.THICKNESS_MULTIPLIER)
+        if type(baseClosestThickness) == "number" then
+            utils.setProp(configObject, "OutlineClosestThickness", baseClosestThickness * config.THICKNESS_MULTIPLIER)
         end
 
-        if type(farthestThickness) == "number" then
-            utils.setProp(configObject, "OutlineFarthestThickness", farthestThickness * config.THICKNESS_MULTIPLIER)
+        if type(baseFarthestThickness) == "number" then
+            utils.setProp(configObject, "OutlineFarthestThickness", baseFarthestThickness * config.THICKNESS_MULTIPLIER)
         end
 
         local stencilMap = utils.getProp(configObject, "StencilOutlineData")
@@ -172,7 +174,6 @@ return function(config, utils, cache)
             end
         end
 
-        outlineConfigApplied = true
         utils.debugLog("Applied outline visibility config")
     end
 

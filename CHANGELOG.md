@@ -1,5 +1,9 @@
 # Changelog
 
+## v1.0.5
+
+- Improved outline consistency so custom thickness and color settings reapply more reliably during play.
+
 ## v1.0.4
 
 - Improved stability to reduce crashes during repeated scans.
