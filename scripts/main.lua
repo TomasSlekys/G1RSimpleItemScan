@@ -2,6 +2,7 @@ local MOD_NAME = "SimpleItemScan"
 
 local HIGHLIGHT_KEY = Key.X
 local ITEM_CLASS = "ItemVisualWorld"
+local ITEM_CLASS_PATH = "/Script/G1R.ItemVisualWorld"
 local CORPSE_CLASS = "GothicCharacter"
 
 local RADIUS = 2500.0       -- 25 metres, Gothic/UE units
@@ -17,6 +18,8 @@ local highlighted = {}
 local highlightedByAddress = {}
 local cachedItems = {}
 local cachedCorpses = {}
+local cachedItemAddresses = {}
+local cachedCorpseAddresses = {}
 local cachedOutlineSubsystem = nil
 local outlineConfigApplied = false
 local activeScanId = 0
@@ -90,6 +93,19 @@ local function getOutlineSubsystem()
     return nil
 end
 
+local function addUniqueActor(cache, addressSet, actor)
+    local address = getAddress(actor)
+    if address ~= nil then
+        if addressSet[address] then
+            return false
+        end
+        addressSet[address] = true
+    end
+
+    cache[#cache + 1] = actor
+    return true
+end
+
 local function applyOutlineConfig(subsystem)
     if outlineConfigApplied then
         return
@@ -127,11 +143,13 @@ local function refreshTargetCache()
     local items = FindAllOf(ITEM_CLASS)
     local freshItems = {}
     local freshCorpses = {}
+    local freshItemAddresses = {}
+    local freshCorpseAddresses = {}
 
     if items then
         for _, item in pairs(items) do
             if isValid(item) then
-                freshItems[#freshItems + 1] = item
+                addUniqueActor(freshItems, freshItemAddresses, item)
             end
         end
     end
@@ -142,7 +160,7 @@ local function refreshTargetCache()
         if corpses then
             for _, corpse in pairs(corpses) do
                 if isValid(corpse) then
-                    freshCorpses[#freshCorpses + 1] = corpse
+                    addUniqueActor(freshCorpses, freshCorpseAddresses, corpse)
                 end
             end
         end
@@ -150,6 +168,8 @@ local function refreshTargetCache()
 
     cachedItems = freshItems
     cachedCorpses = freshCorpses
+    cachedItemAddresses = freshItemAddresses
+    cachedCorpseAddresses = freshCorpseAddresses
     debugLog("Cached " .. tostring(#cachedItems) .. " item(s) and " .. tostring(#cachedCorpses) .. " corpse(s)")
 end
 
@@ -287,7 +307,7 @@ local function scanAndHighlight()
         return
     end
 
-    if #cachedItems == 0 and (not HIGHLIGHT_CORPSES or #cachedCorpses == 0) then
+    if #cachedItems == 0 or (HIGHLIGHT_CORPSES and #cachedCorpses == 0) then
         refreshTargetCache()
     end
 
@@ -361,6 +381,16 @@ local function scanAndHighlight()
 
     cachedItems = activeItems
     cachedCorpses = activeCorpses
+    cachedItemAddresses = {}
+    cachedCorpseAddresses = {}
+
+    for _, item in ipairs(cachedItems) do
+        addUniqueActor({}, cachedItemAddresses, item)
+    end
+
+    for _, corpse in ipairs(cachedCorpses) do
+        addUniqueActor({}, cachedCorpseAddresses, corpse)
+    end
 
     debugLog("Highlighted " .. tostring(count) .. " nearby target(s)")
 
@@ -378,6 +408,16 @@ debugLog("Debug mode enabled")
 
 ExecuteInGameThread(function()
     refreshTargetCache()
+end)
+
+pcall(function()
+    NotifyOnNewObject(ITEM_CLASS_PATH, function(obj)
+        ExecuteInGameThread(function()
+            if isValid(obj) then
+                addUniqueActor(cachedItems, cachedItemAddresses, obj)
+            end
+        end)
+    end)
 end)
 
 RegisterKeyBind(HIGHLIGHT_KEY, function()
