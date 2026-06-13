@@ -14,10 +14,12 @@ local THICKNESS_MULTIPLIER = 2.0
 local DEBUG_MODE = true
 
 local highlighted = {}
+local highlightedByAddress = {}
 local cachedItems = {}
 local cachedCorpses = {}
 local cachedOutlineSubsystem = nil
 local outlineConfigApplied = false
+local activeScanId = 0
 
 local function log(msg)
     print("[" .. MOD_NAME .. "] " .. msg .. "\n")
@@ -52,6 +54,22 @@ local function setProp(obj, prop, value)
         obj[prop] = value
     end)
     return ok
+end
+
+local function getAddress(obj)
+    if not isValid(obj) then
+        return nil
+    end
+
+    local ok, address = pcall(function()
+        return obj:GetAddress()
+    end)
+
+    if ok then
+        return address
+    end
+
+    return nil
 end
 
 local function getOutlineSubsystem()
@@ -228,7 +246,31 @@ local function removeHighlights(subsystem)
     end
 
     highlighted = {}
+    highlightedByAddress = {}
     debugLog("Removed temporary outlines")
+end
+
+local function addHighlight(subsystem, component)
+    local address = getAddress(component)
+    if address ~= nil and highlightedByAddress[address] then
+        return false
+    end
+
+    local ok = pcall(function()
+        subsystem:AddOutline(component, STENCIL_USAGE, USE_THICK_OUTLINE)
+    end)
+
+    if not ok then
+        return false
+    end
+
+    highlighted[#highlighted + 1] = component
+
+    if address ~= nil then
+        highlightedByAddress[address] = true
+    end
+
+    return true
 end
 
 local function scanAndHighlight()
@@ -249,8 +291,10 @@ local function scanAndHighlight()
         refreshTargetCache()
     end
 
+    activeScanId = activeScanId + 1
+    local scanId = activeScanId
+
     applyOutlineConfig(subsystem)
-    removeHighlights(subsystem)
 
     pcall(function()
         subsystem:SetIsSystemEnabled(true)
@@ -282,12 +326,7 @@ local function scanAndHighlight()
                     local component = getInteractiveComponent(item)
 
                     if component then
-                        local ok = pcall(function()
-                            subsystem:AddOutline(component, STENCIL_USAGE, USE_THICK_OUTLINE)
-                        end)
-
-                        if ok then
-                            highlighted[#highlighted + 1] = component
+                        if addHighlight(subsystem, component) then
                             count = count + 1
                         end
                     end
@@ -311,12 +350,7 @@ local function scanAndHighlight()
                     local lootable, component = isLootableCorpse(corpse, pawn)
 
                     if lootable then
-                        local ok = pcall(function()
-                            subsystem:AddOutline(component, STENCIL_USAGE, USE_THICK_OUTLINE)
-                        end)
-
-                        if ok then
-                            highlighted[#highlighted + 1] = component
+                        if addHighlight(subsystem, component) then
                             count = count + 1
                         end
                     end
@@ -332,7 +366,9 @@ local function scanAndHighlight()
 
     ExecuteWithDelay(math.floor(DURATION * 1000), function()
         ExecuteInGameThread(function()
-            removeHighlights()
+            if scanId == activeScanId then
+                removeHighlights()
+            end
         end)
     end)
 end
