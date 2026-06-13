@@ -14,17 +14,20 @@ Installation instructions
 
 Main features
 
-- Press the configured scan key to highlight nearby world items in a configurable radius around the player.
-- Lootable ragdoll corpses can also be highlighted.
-- Chests can also be highlighted.
+- Press the configured scan key ("X" by default) to highlight nearby world items, corpses and chest in a configurable radius (25m by default) around the player.
 - Scan radius and highlight duration are configurable in `Scripts/config.lua`.
 - Repeated scans refresh the timer on already highlighted targets instead of clearing them immediately.
-- Newly streamed items are added to the cache automatically.
-- Newly encountered corpses are refreshed into the cache on scan.
 - Outline visibility can be tuned through config options such as thickness, opacity, and color.
-- User-facing settings are stored in a separate `Scripts/config.lua` file.
 - You can configure:
-  the scan button, scan radius, highlight duration, whether corpses are included, whether chests are included, outline thickness, outline opacity, outline color, and debug logging
+  - the scan button; default: `X`
+  - scan radius; default: `2500 uu` (about `25m`)
+  - highlight duration; default: `5 seconds`
+  - whether corpses are included; default: `enabled`
+  - whether chests are included; default: `enabled`
+  - outline thickness; default: `thick outline enabled`, multiplier `2.0`
+  - outline opacity; default: `1.0`
+  - outline color; default: white `1.0, 1.0, 1.0`
+  - debug logging; default: `enabled`
 
 Requirements
 
