@@ -1,0 +1,126 @@
+return function(modName, debugMode)
+    local M = {}
+
+    function M.log(msg)
+        print("[" .. modName .. "] " .. msg .. "\n")
+    end
+
+    function M.debugLog(msg)
+        if debugMode then
+            M.log(msg)
+        end
+    end
+
+    function M.isValid(obj)
+        if obj == nil then
+            return false
+        end
+
+        local ok, valid = pcall(function()
+            return obj:IsValid()
+        end)
+
+        return ok and valid
+    end
+
+    function M.getProp(obj, prop)
+        local ok, value = pcall(function()
+            return obj[prop]
+        end)
+
+        if ok then
+            return value
+        end
+
+        return nil
+    end
+
+    function M.setProp(obj, prop, value)
+        local ok = pcall(function()
+            obj[prop] = value
+        end)
+
+        return ok
+    end
+
+    function M.getAddress(obj)
+        if not M.isValid(obj) then
+            return nil
+        end
+
+        local ok, address = pcall(function()
+            return obj:GetAddress()
+        end)
+
+        if ok then
+            return address
+        end
+
+        return nil
+    end
+
+    function M.getLocation(actor)
+        if not M.isValid(actor) then
+            return nil
+        end
+
+        local root = M.getProp(actor, "RootComponent")
+        if root then
+            local loc = M.getProp(root, "RelativeLocation")
+            if loc and loc.X and loc.Y and loc.Z then
+                return loc.X, loc.Y, loc.Z
+            end
+        end
+
+        local ok, loc = pcall(function()
+            return actor:K2_GetActorLocation()
+        end)
+
+        if ok and loc and loc.X and loc.Y and loc.Z then
+            return loc.X, loc.Y, loc.Z
+        end
+
+        return nil
+    end
+
+    function M.getInteractiveComponent(actor)
+        local component = M.getProp(actor, "m_InteractiveComponent")
+        if M.isValid(component) then
+            return component
+        end
+        return nil
+    end
+
+    function M.getPlayerPawn()
+        local controllers = FindAllOf("PlayerController")
+        if not controllers then
+            return nil
+        end
+
+        for _, pc in pairs(controllers) do
+            if M.isValid(pc) then
+                local pawn = M.getProp(pc, "Pawn")
+                if M.isValid(pawn) then
+                    return pawn
+                end
+            end
+        end
+
+        return nil
+    end
+
+    function M.addUniqueActor(cache, addressSet, actor)
+        local address = M.getAddress(actor)
+        if address ~= nil then
+            if addressSet[address] then
+                return false
+            end
+            addressSet[address] = true
+        end
+
+        cache[#cache + 1] = actor
+        return true
+    end
+
+    return M
+end
