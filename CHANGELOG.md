@@ -1,5 +1,13 @@
 # Changelog
 
+## v1.0.6
+
+- Improved scan performance to reduce hitching when pressing the scan key.
+- Optimised nearby target collection so scans do less work in dense areas.
+- Reduced the impact of corpse refreshes on the immediate scan button press.
+- Improved corpse coverage so more nearby corpses are detected and highlighted reliably.
+- Updated the README config list so it matches the current options and default values.
+
 ## v1.0.5
 
 - Improved outline consistency so custom thickness and color settings reapply more reliably during play.

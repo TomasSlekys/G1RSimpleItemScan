@@ -24,6 +24,7 @@ Main features
   - the scan button; default: `X`
   - scan radius; default: `2500 uu` (about `25m`)
   - highlight duration; default: `5 seconds`
+  - whether thick outlines are used; default: `enabled`
   - whether corpses are included; default: `enabled`
   - whether chests are included; default: `enabled`
   - whether opened chests should be remembered and skipped later (EXPERIMENTAL); default: `disabled`
@@ -31,7 +32,7 @@ Main features
   - outline thickness; default: `thick outline enabled`, multiplier `2.0`
   - outline opacity; default: `1.0`
   - outline color; default: white `1.0, 1.0, 1.0`
-  - debug logging; default: `enabled`
+  - debug logging; default: `disabled`
 
 Requirements
 

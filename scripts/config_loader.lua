@@ -12,6 +12,7 @@ local DEFAULT_CONFIG = {
     thickness_multiplier = 2.0,
     debug_mode = true,
     log_chest_state = false,
+    log_corpse_state = false,
 }
 
 local function scriptRoot()
@@ -80,7 +81,8 @@ local outlineColor = cfgColor("outline_color", { 1.0, 0.85, 0.2 })
 return {
     ITEM_CLASS = "ItemVisualWorld",
     ITEM_CLASS_PATH = "/Script/G1R.ItemVisualWorld",
-    CORPSE_CLASS = "GothicCharacter",
+    CORPSE_CLASS = "Character",
+    CORPSE_CLASS_PATH = "/Script/Engine.Character",
     CHEST_CLASS = "InteractiveObjectActor",
     CHEST_CLASS_PATH = "/Script/G1R.InteractiveObjectActor",
     HIGHLIGHT_KEY_NAME = highlightKeyName,
@@ -98,4 +100,5 @@ return {
     THICKNESS_MULTIPLIER = cfgNumber("thickness_multiplier"),
     DEBUG_MODE = cfgBoolean("debug_mode"),
     LOG_CHEST_STATE = cfgBoolean("log_chest_state"),
+    LOG_CORPSE_STATE = cfgBoolean("log_corpse_state"),
 }

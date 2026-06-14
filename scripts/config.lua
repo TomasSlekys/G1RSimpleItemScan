@@ -41,13 +41,17 @@ return {
 
     -- Enables extra log output in the UE4SS / mod log.
     -- Useful for troubleshooting, but usually not needed for normal play.
-    debug_mode = true,
+    debug_mode = false,
 
     -- EXPERIMENTAL
 
     -- Logs extra chest/container state details to the UE4SS log.
     -- Useful for comparing full vs empty chests while testing.
     log_chest_state = false,
+
+    -- Logs nearby corpse scan decisions to the UE4SS log.
+    -- Useful for troubleshooting why some corpses are not highlighted.
+    log_corpse_state = false,
 
     -- When true, opened chests are remembered in a text file and skipped in later scans.
     -- Experimental: this is intended to reduce highlights on already looted containers.

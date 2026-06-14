@@ -109,6 +109,20 @@ return function(modName, debugMode)
     end
 
     function M.getPlayerPawn()
+        local controller = M.getPlayerController()
+        if not controller then
+            return nil
+        end
+
+        local pawn = M.getProp(controller, "Pawn")
+        if M.isValid(pawn) then
+            return pawn
+        end
+
+        return nil
+    end
+
+    function M.getPlayerController()
         local controllers = FindAllOf("PlayerController")
         if not controllers then
             return nil
@@ -116,10 +130,7 @@ return function(modName, debugMode)
 
         for _, pc in pairs(controllers) do
             if M.isValid(pc) then
-                local pawn = M.getProp(pc, "Pawn")
-                if M.isValid(pawn) then
-                    return pawn
-                end
+                return pc
             end
         end
 

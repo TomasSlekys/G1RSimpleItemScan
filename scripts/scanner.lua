@@ -12,9 +12,10 @@ return function(config, utils, cache, chestMemory)
     local chestLocationCache = {}
     local chestTypeCache = {}
     local chestStateLogged = {}
-    local scanBatchSize = 64
+    local scanBatchSize = 16
     local lastCorpseRefreshMs = 0
     local corpseRefreshIntervalMs = 1000
+    local corpseRefreshQueued = false
     local chestKeywords = {
         "chest", "box", "barrel", "basket", "container", "safe", "crate",
         "cupboard", "wardrobe", "locker", "urn", "tomb", "sarcophagus"
@@ -30,6 +31,10 @@ return function(config, utils, cache, chestMemory)
         end
 
         return 0
+    end
+
+    local function elapsedMs(startMs)
+        return nowMs() - startMs
     end
 
     local function getCachedStaticLocation(cacheTable, actor)
@@ -53,15 +58,28 @@ return function(config, utils, cache, chestMemory)
         return x, y, z
     end
 
-    local function maybeRefreshCorpses()
+    local function queueCorpseRefresh()
         if not config.HIGHLIGHT_CORPSES then
             return
         end
 
         local currentMs = nowMs()
+        if corpseRefreshQueued then
+            return
+        end
+
         if #cache.corpses == 0 or currentMs - lastCorpseRefreshMs >= corpseRefreshIntervalMs then
-            cache.refreshCorpses()
-            lastCorpseRefreshMs = currentMs
+            corpseRefreshQueued = true
+
+            ExecuteWithDelay(0, function()
+                ExecuteInGameThread(function()
+                    local refreshStartMs = nowMs()
+                    cache.refreshCorpses()
+                    lastCorpseRefreshMs = nowMs()
+                    corpseRefreshQueued = false
+                    utils.debugLog("ScanTiming corpse_refresh=" .. tostring(elapsedMs(refreshStartMs)) .. "ms corpses=" .. tostring(#cache.corpses))
+                end)
+            end)
         end
     end
 
@@ -201,15 +219,25 @@ return function(config, utils, cache, chestMemory)
             return false, nil
         end
 
-        if utils.getProp(component, "m_ForceDisableInteraction") == true then
-            return false, nil
-        end
-
         if utils.getProp(component, "m_CanBeUsed") == false then
             return false, nil
         end
 
+        local mesh = utils.getProp(actor, "Mesh")
+        if utils.isValid(mesh) then
+            return true, mesh
+        end
+
         return true, component
+    end
+
+    local function resolveCorpseOutlineComponent(actor)
+        local mesh = utils.getProp(actor, "Mesh")
+        if utils.isValid(mesh) then
+            return mesh
+        end
+
+        return utils.getInteractiveComponent(actor)
     end
 
     local function isLikelyLootContainerType(actor)
@@ -419,6 +447,7 @@ return function(config, utils, cache, chestMemory)
 
     local function processScanBatch(subsystem, pawn, px, py, pz, radiusSquared, state)
         local processed = 0
+        local startingPhase = state.phase
 
         while processed < scanBatchSize do
             local actor = nil
@@ -426,13 +455,13 @@ return function(config, utils, cache, chestMemory)
             local targetKind = nil
 
             if state.phase == "items" then
-                list = cache.items
+                list = state.itemCandidates
                 targetKind = "item"
             elseif state.phase == "corpses" then
                 list = cache.corpses
                 targetKind = "corpse"
             elseif state.phase == "chests" then
-                list = cache.chests
+                list = state.chestCandidates
                 targetKind = "chest"
             else
                 break
@@ -485,7 +514,7 @@ return function(config, utils, cache, chestMemory)
                                 end
                             elseif targetKind == "corpse" then
                                 local lootable, component = isLootableCorpse(actor, pawn)
-                                if lootable and addHighlight(subsystem, actor, component, utils.getInteractiveComponent) then
+                                if lootable and addHighlight(subsystem, actor, component, resolveCorpseOutlineComponent) then
                                     state.count = state.count + 1
                                 end
                             else
@@ -502,10 +531,19 @@ return function(config, utils, cache, chestMemory)
             end
         end
 
+        if startingPhase == "items" then
+            state.processedItems = state.index
+        elseif startingPhase == "corpses" then
+            state.processedCorpses = state.index
+        elseif startingPhase == "chests" then
+            state.processedChests = state.index
+        end
+
         return state.phase == "done"
     end
 
     function M.scanAndHighlight()
+        local scanStartMs = nowMs()
         local subsystem = getOutlineSubsystem()
         local pawn = utils.getPlayerPawn()
 
@@ -522,15 +560,22 @@ return function(config, utils, cache, chestMemory)
         if #cache.items == 0
             or (config.HIGHLIGHT_CORPSES and #cache.corpses == 0)
             or (config.HIGHLIGHT_CHESTS and #cache.chests == 0) then
+            local refreshStartMs = nowMs()
             cache.refreshTargets()
+            utils.debugLog(
+                "ScanTiming target_refresh=" .. tostring(elapsedMs(refreshStartMs))
+                .. "ms items=" .. tostring(#cache.items)
+                .. " corpses=" .. tostring(#cache.corpses)
+                .. " chests=" .. tostring(#cache.chests)
+            )
         end
-
-        maybeRefreshCorpses()
 
         activeScanId = activeScanId + 1
         local scanId = activeScanId
 
+        local outlineStartMs = nowMs()
         applyOutlineConfig(subsystem)
+        utils.debugLog("ScanTiming outline_config=" .. tostring(elapsedMs(outlineStartMs)) .. "ms")
 
         pcall(function()
             subsystem:SetIsSystemEnabled(true)
@@ -550,6 +595,12 @@ return function(config, utils, cache, chestMemory)
             activeItems = {},
             activeCorpses = {},
             activeChests = {},
+            itemCandidates = cache.queryNearbyStaticActors("item", px, py, config.RADIUS),
+            chestCandidates = cache.queryNearbyStaticActors("chest", px, py, config.RADIUS),
+            processedItems = 0,
+            processedCorpses = 0,
+            processedChests = 0,
+            batchCount = 0,
         }
 
         local function finishScan()
@@ -559,6 +610,17 @@ return function(config, utils, cache, chestMemory)
             cache.rebuildAddressSets()
 
             utils.debugLog("Highlighted " .. tostring(state.count) .. " nearby target(s)")
+            utils.debugLog(
+                "ScanTiming total=" .. tostring(elapsedMs(scanStartMs))
+                .. "ms batches=" .. tostring(state.batchCount)
+                .. " item_candidates=" .. tostring(#state.itemCandidates)
+                .. " chest_candidates=" .. tostring(#state.chestCandidates)
+                .. " items=" .. tostring(#state.activeItems)
+                .. " corpses=" .. tostring(#state.activeCorpses)
+                .. " chests=" .. tostring(#state.activeChests)
+            )
+
+            queueCorpseRefresh()
 
             ExecuteWithDelay(math.floor(config.DURATION * 1000), function()
                 ExecuteInGameThread(function()
@@ -575,6 +637,7 @@ return function(config, utils, cache, chestMemory)
                     return
                 end
 
+                state.batchCount = state.batchCount + 1
                 local done = processScanBatch(subsystem, pawn, px, py, pz, radiusSquared, state)
                 if done then
                     finishScan()
