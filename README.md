@@ -18,6 +18,7 @@ Main features
 - Press the configured scan key ("X" by default) to highlight nearby world items, corpses and chest in a configurable radius (25m by default) around the player.
 - Scan radius and highlight duration are configurable in `Scripts/config.lua`.
 - Repeated scans refresh the timer on already highlighted targets instead of clearing them immediately.
+- Experimental chest memory can remember opened chests and stop highlighting them in later scans.
 - Outline visibility can be tuned through config options such as thickness, opacity, and color.
 - You can configure:
   - the scan button; default: `X`
@@ -25,6 +26,7 @@ Main features
   - highlight duration; default: `5 seconds`
   - whether corpses are included; default: `enabled`
   - whether chests are included; default: `enabled`
+  - whether opened chests should be remembered and skipped later (EXPERIMENTAL); default: `disabled`
   - chest memory slot name for separate save/playthrough tracking; default: `default`
   - outline thickness; default: `thick outline enabled`, multiplier `2.0`
   - outline opacity; default: `1.0`
