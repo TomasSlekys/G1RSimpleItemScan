@@ -1,5 +1,9 @@
 # Changelog
 
+## v1.0.7
+
+- Fixed an issue introduced by the performance update where some nearby items could stop being highlighted.
+
 ## v1.0.6
 
 - Improved scan performance to reduce hitching when pressing the scan key.

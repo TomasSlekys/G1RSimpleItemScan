@@ -71,19 +71,6 @@ return function(modName, debugMode)
             return nil
         end
 
-        local root = M.getProp(actor, "RootComponent")
-        if root then
-            local loc = M.getProp(root, "RelativeLocation")
-            if loc then
-                local x = M.getNumber(loc.X)
-                local y = M.getNumber(loc.Y)
-                local z = M.getNumber(loc.Z)
-                if x ~= nil and y ~= nil and z ~= nil then
-                    return x, y, z
-                end
-            end
-        end
-
         local ok, loc = pcall(function()
             return actor:K2_GetActorLocation()
         end)
@@ -94,6 +81,19 @@ return function(modName, debugMode)
             local z = M.getNumber(loc.Z)
             if x ~= nil and y ~= nil and z ~= nil then
                 return x, y, z
+            end
+        end
+
+        local root = M.getProp(actor, "RootComponent")
+        if root then
+            local loc = M.getProp(root, "RelativeLocation")
+            if loc then
+                local x = M.getNumber(loc.X)
+                local y = M.getNumber(loc.Y)
+                local z = M.getNumber(loc.Z)
+                if x ~= nil and y ~= nil and z ~= nil then
+                    return x, y, z
+                end
             end
         end
 
