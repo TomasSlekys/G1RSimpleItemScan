@@ -24,13 +24,19 @@ local scanner = dofile(SCRIPT_ROOT .. "scanner.lua")(config, utils, cache, chest
 utils.log("Loaded. Press " .. config.HIGHLIGHT_KEY_NAME .. " to temporarily highlight nearby items and lootable corpses.")
 utils.debugLog("Debug mode enabled")
 
+cache.registerItemStream()
+cache.registerChestStream()
+chestMemory.registerHooks()
+
 ExecuteInGameThread(function()
     cache.refreshTargets()
 end)
 
-cache.registerItemStream()
-cache.registerChestStream()
-chestMemory.registerHooks()
+ExecuteWithDelay(3000, function()
+    ExecuteInGameThread(function()
+        cache.refreshStaticTargets()
+    end)
+end)
 
 RegisterKeyBind(config.HIGHLIGHT_KEY, function()
     ExecuteInGameThread(function()

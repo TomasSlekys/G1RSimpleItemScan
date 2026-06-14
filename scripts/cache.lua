@@ -222,6 +222,40 @@ return function(config, utils)
         end
     end
 
+    function M.refreshStaticTargets()
+        local changed = false
+
+        local items = collectActors(config.ITEM_CLASS, config.ITEM_CLASS_PATH)
+        if items then
+            for _, item in pairs(items) do
+                if utils.isValid(item) then
+                    if utils.addUniqueActor(M.items, M.itemAddresses, item) then
+                        addStaticActorToBuckets(M.itemBuckets, item)
+                        changed = true
+                    end
+                end
+            end
+        end
+
+        if config.HIGHLIGHT_CHESTS then
+            local chests = collectActors(config.CHEST_CLASS, config.CHEST_CLASS_PATH)
+            if chests then
+                for _, chest in pairs(chests) do
+                    if utils.isValid(chest) then
+                        if utils.addUniqueActor(M.chests, M.chestAddresses, chest) then
+                            addStaticActorToBuckets(M.chestBuckets, chest)
+                            changed = true
+                        end
+                    end
+                end
+            end
+        end
+
+        if changed then
+            utils.debugLog("Merged late-loaded static targets. Items=" .. tostring(#M.items) .. " Chests=" .. tostring(#M.chests))
+        end
+    end
+
     function M.rebuildAddressSets()
         M.itemAddresses = rebuildAddressSet(M.items)
         M.corpseAddresses = rebuildAddressSet(M.corpses)

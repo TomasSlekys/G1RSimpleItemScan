@@ -483,14 +483,6 @@ return function(config, utils, cache, chestMemory)
                 processed = processed + 1
 
                 if utils.isValid(actor) then
-                    if targetKind == "item" then
-                        state.activeItems[#state.activeItems + 1] = actor
-                    elseif targetKind == "corpse" then
-                        state.activeCorpses[#state.activeCorpses + 1] = actor
-                    else
-                        state.activeChests[#state.activeChests + 1] = actor
-                    end
-
                     local tx, ty, tz = nil, nil, nil
                     if targetKind == "item" then
                         tx, ty, tz = getCachedStaticLocation(itemLocationCache, actor)
@@ -592,9 +584,6 @@ return function(config, utils, cache, chestMemory)
             phase = "items",
             index = 0,
             count = 0,
-            activeItems = {},
-            activeCorpses = {},
-            activeChests = {},
             itemCandidates = cache.queryNearbyStaticActors("item", px, py, config.RADIUS),
             chestCandidates = cache.queryNearbyStaticActors("chest", px, py, config.RADIUS),
             processedItems = 0,
@@ -604,20 +593,15 @@ return function(config, utils, cache, chestMemory)
         }
 
         local function finishScan()
-            cache.items = state.activeItems
-            cache.corpses = state.activeCorpses
-            cache.chests = state.activeChests
-            cache.rebuildAddressSets()
-
             utils.debugLog("Highlighted " .. tostring(state.count) .. " nearby target(s)")
             utils.debugLog(
                 "ScanTiming total=" .. tostring(elapsedMs(scanStartMs))
                 .. "ms batches=" .. tostring(state.batchCount)
                 .. " item_candidates=" .. tostring(#state.itemCandidates)
                 .. " chest_candidates=" .. tostring(#state.chestCandidates)
-                .. " items=" .. tostring(#state.activeItems)
-                .. " corpses=" .. tostring(#state.activeCorpses)
-                .. " chests=" .. tostring(#state.activeChests)
+                .. " items=" .. tostring(#cache.items)
+                .. " corpses=" .. tostring(#cache.corpses)
+                .. " chests=" .. tostring(#cache.chests)
             )
 
             queueCorpseRefresh()

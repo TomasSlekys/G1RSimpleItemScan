@@ -1,5 +1,10 @@
 # Changelog
 
+## v1.0.8
+
+- Fixed cases where some nearby items could be missed until restarting the game.
+- Improved startup target collection so already loaded items and chests are picked up more reliably.
+
 ## v1.0.7
 
 - Fixed an issue introduced by the performance update where some nearby items could stop being highlighted.
