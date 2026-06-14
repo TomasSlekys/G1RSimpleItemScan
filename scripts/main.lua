@@ -18,7 +18,8 @@ local MOD_NAME = SCRIPT_ROOT:match("/Mods/([^/]+)/Scripts/$") or "SimpleItemScan
 local config = dofile(SCRIPT_ROOT .. "config_loader.lua")
 local utils = dofile(SCRIPT_ROOT .. "utils.lua")(MOD_NAME, config.DEBUG_MODE)
 local cache = dofile(SCRIPT_ROOT .. "cache.lua")(config, utils)
-local scanner = dofile(SCRIPT_ROOT .. "scanner.lua")(config, utils, cache)
+local chestMemory = dofile(SCRIPT_ROOT .. "chest_memory.lua")(config, utils)
+local scanner = dofile(SCRIPT_ROOT .. "scanner.lua")(config, utils, cache, chestMemory)
 
 utils.log("Loaded. Press " .. config.HIGHLIGHT_KEY_NAME .. " to temporarily highlight nearby items and lootable corpses.")
 utils.debugLog("Debug mode enabled")
@@ -29,6 +30,7 @@ end)
 
 cache.registerItemStream()
 cache.registerChestStream()
+chestMemory.registerHooks()
 
 RegisterKeyBind(config.HIGHLIGHT_KEY, function()
     ExecuteInGameThread(function()

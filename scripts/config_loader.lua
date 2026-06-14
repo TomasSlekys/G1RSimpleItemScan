@@ -6,9 +6,12 @@ local DEFAULT_CONFIG = {
     use_thick_outline = true,
     highlight_corpses = true,
     highlight_chests = true,
+    remember_opened_chests = false,
+    chest_memory_slot = "default",
     outline_alpha = 1.0,
     thickness_multiplier = 2.0,
     debug_mode = true,
+    log_chest_state = false,
 }
 
 local function scriptRoot()
@@ -88,8 +91,11 @@ return {
     USE_THICK_OUTLINE = cfgBoolean("use_thick_outline"),
     HIGHLIGHT_CORPSES = cfgBoolean("highlight_corpses"),
     HIGHLIGHT_CHESTS = cfgBoolean("highlight_chests"),
+    REMEMBER_OPENED_CHESTS = cfgBoolean("remember_opened_chests"),
+    CHEST_MEMORY_SLOT = cfgString("chest_memory_slot"),
     OUTLINE_ALPHA = cfgNumber("outline_alpha"),
     OUTLINE_COLOR = outlineColor,
     THICKNESS_MULTIPLIER = cfgNumber("thickness_multiplier"),
     DEBUG_MODE = cfgBoolean("debug_mode"),
+    LOG_CHEST_STATE = cfgBoolean("log_chest_state"),
 }

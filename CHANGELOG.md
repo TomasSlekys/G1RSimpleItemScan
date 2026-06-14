@@ -3,6 +3,8 @@
 ## v1.0.5
 
 - Improved outline consistency so custom thickness and color settings reapply more reliably during play.
+- Added an experimental option to remember opened chests and stop highlighting them in later scans.
+- Added a manual chest memory slot setting so different saves or characters can use separate remembered chest lists.
 
 ## v1.0.4
 

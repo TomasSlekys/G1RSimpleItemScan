@@ -11,6 +11,7 @@ Installation instructions
 3. Start the game with UE4SS / your Lua mod loader enabled.
 4. Enable `Accessibility > Object Outliner` in the game's settings.
 5. Edit `Scripts/config.lua` if you want to change the scan key, radius, duration, or outline settings.
+6. If you use chest memory on multiple saves or characters, set a different `chest_memory_slot` value in `Scripts/config.lua` for each one.
 
 Main features
 
@@ -24,6 +25,7 @@ Main features
   - highlight duration; default: `5 seconds`
   - whether corpses are included; default: `enabled`
   - whether chests are included; default: `enabled`
+  - chest memory slot name for separate save/playthrough tracking; default: `default`
   - outline thickness; default: `thick outline enabled`, multiplier `2.0`
   - outline opacity; default: `1.0`
   - outline color; default: white `1.0, 1.0, 1.0`

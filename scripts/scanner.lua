@@ -1,4 +1,4 @@
-return function(config, utils, cache)
+return function(config, utils, cache, chestMemory)
     local M = {}
 
     local highlighted = {}
@@ -11,6 +11,7 @@ return function(config, utils, cache)
     local itemLocationCache = {}
     local chestLocationCache = {}
     local chestTypeCache = {}
+    local chestStateLogged = {}
     local scanBatchSize = 64
     local lastCorpseRefreshMs = 0
     local corpseRefreshIntervalMs = 1000
@@ -217,6 +218,13 @@ return function(config, utils, cache)
         end
 
         local address = utils.getAddress(actor)
+        if chestMemory and chestMemory.isRemembered(actor) then
+            if address ~= nil then
+                chestTypeCache[address] = false
+            end
+            return false
+        end
+
         if address ~= nil and chestTypeCache[address] ~= nil then
             return chestTypeCache[address]
         end
@@ -230,17 +238,28 @@ return function(config, utils, cache)
 
         fullName = tostring(fullName or "")
         local nameLower = string.lower(fullName)
+        local blockReason = nil
 
         if string.find(nameLower, "worldpointactor", 1, true) then
+            blockReason = "worldpointactor"
             if address ~= nil then
                 chestTypeCache[address] = false
+            end
+            if config.LOG_CHEST_STATE and address ~= nil and not chestStateLogged[address] then
+                chestStateLogged[address] = true
+                utils.log("ChestState " .. tostring(address) .. " rejected: " .. blockReason .. " | " .. fullName)
             end
             return false
         end
 
         if string.find(nameLower, "itai", 1, true) then
+            blockReason = "itai"
             if address ~= nil then
                 chestTypeCache[address] = false
+            end
+            if config.LOG_CHEST_STATE and address ~= nil and not chestStateLogged[address] then
+                chestStateLogged[address] = true
+                utils.log("ChestState " .. tostring(address) .. " rejected: " .. blockReason .. " | " .. fullName)
             end
             return false
         end
@@ -255,8 +274,13 @@ return function(config, utils, cache)
             or string.find(nameLower, "ladder", 1, true)
             or string.find(nameLower, "wheel", 1, true)
             or string.find(nameLower, "gate", 1, true) then
+            blockReason = "excluded_interactable"
             if address ~= nil then
                 chestTypeCache[address] = false
+            end
+            if config.LOG_CHEST_STATE and address ~= nil and not chestStateLogged[address] then
+                chestStateLogged[address] = true
+                utils.log("ChestState " .. tostring(address) .. " rejected: " .. blockReason .. " | " .. fullName)
             end
             return false
         end
@@ -270,12 +294,19 @@ return function(config, utils, cache)
         end
 
         if not matchesKeyword then
+            blockReason = "no_keyword_match"
             if address ~= nil then
                 chestTypeCache[address] = false
+            end
+            if config.LOG_CHEST_STATE and address ~= nil and not chestStateLogged[address] then
+                chestStateLogged[address] = true
+                utils.log("ChestState " .. tostring(address) .. " rejected: " .. blockReason .. " | " .. fullName)
             end
             return false
         end
 
+        local actorLocked = utils.getProp(actor, "m_Locked")
+        local actorKeyName = utils.getProp(actor, "m_KeyName")
         local hasLootData = false
         if utils.getProp(actor, "m_Inventory") ~= nil
             or utils.getProp(actor, "m_Items") ~= nil
@@ -293,12 +324,11 @@ return function(config, utils, cache)
         end
 
         if not hasLootData then
-            if utils.getProp(actor, "m_Locked") == true then
+            if actorLocked == true then
                 hasLootData = true
             else
-                local keyName = utils.getProp(actor, "m_KeyName")
-                if keyName ~= nil then
-                    local keyString = tostring(keyName)
+                if actorKeyName ~= nil then
+                    local keyString = tostring(actorKeyName)
                     if keyString ~= "" and keyString ~= "None" then
                         hasLootData = true
                     end
@@ -309,6 +339,11 @@ return function(config, utils, cache)
         local result = component ~= nil and hasLootData
         if address ~= nil then
             chestTypeCache[address] = result
+        end
+
+        if config.LOG_CHEST_STATE and address ~= nil and not chestStateLogged[address] then
+            chestStateLogged[address] = true
+            utils.log("ChestState " .. tostring(address) .. " result=" .. tostring(result) .. " | name=" .. fullName)
         end
 
         return result
