@@ -6,6 +6,7 @@
 - Improved startup target collection so already loaded items and chests are picked up more reliably.
 - Excluded AI/helper-style bag items from normal item highlighting.
 - Added optional item debug logging to help identify unwanted highlighted objects.
+- Improved outline setting persistence so custom color and thickness reapply more reliably after quickloads and world changes.
 
 ## v1.0.7
 

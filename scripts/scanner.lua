@@ -7,6 +7,8 @@ return function(config, utils, cache, chestMemory)
     local configuredOutlineConfigAddress = nil
     local baseClosestThickness = nil
     local baseFarthestThickness = nil
+    local lastPawnAddress = nil
+    local lastOutlineWorldAddress = nil
     local activeScanId = 0
     local itemLocationCache = {}
     local chestLocationCache = {}
@@ -89,7 +91,47 @@ return function(config, utils, cache, chestMemory)
         end
     end
 
-    local function getOutlineSubsystem()
+    local function getObjectWorldAddress(obj)
+        if not utils.isValid(obj) then
+            return nil
+        end
+
+        local ok, world = pcall(function()
+            return obj:GetWorld()
+        end)
+        if not ok or not utils.isValid(world) then
+            return nil
+        end
+
+        return utils.getAddress(world)
+    end
+
+    local function resetOutlineCache()
+        cachedOutlineSubsystem = nil
+        configuredOutlineConfigAddress = nil
+        baseClosestThickness = nil
+        baseFarthestThickness = nil
+        lastOutlineWorldAddress = nil
+    end
+
+    local function checkWorldReload(pawn)
+        local pawnAddress = utils.getAddress(pawn)
+        if pawnAddress ~= nil and lastPawnAddress ~= nil and pawnAddress ~= lastPawnAddress then
+            resetOutlineCache()
+            utils.debugLog("Detected world/pawn change, resetting outline cache")
+        end
+        lastPawnAddress = pawnAddress
+    end
+
+    local function getOutlineSubsystem(pawn)
+        if utils.isValid(cachedOutlineSubsystem) and utils.isValid(pawn) then
+            local pawnWorldAddress = getObjectWorldAddress(pawn)
+            local subsystemWorldAddress = getObjectWorldAddress(cachedOutlineSubsystem)
+            if pawnWorldAddress ~= nil and subsystemWorldAddress ~= nil and pawnWorldAddress ~= subsystemWorldAddress then
+                resetOutlineCache()
+            end
+        end
+
         if utils.isValid(cachedOutlineSubsystem) then
             return cachedOutlineSubsystem
         end
@@ -102,6 +144,7 @@ return function(config, utils, cache, chestMemory)
         for _, obj in pairs(list) do
             if utils.isValid(obj) then
                 cachedOutlineSubsystem = obj
+                lastOutlineWorldAddress = getObjectWorldAddress(obj)
                 return obj
             end
         end
@@ -109,8 +152,8 @@ return function(config, utils, cache, chestMemory)
         return nil
     end
 
-    local function applyOutlineConfig(subsystem)
-        subsystem = subsystem or getOutlineSubsystem()
+    local function applyOutlineConfig(subsystem, pawn)
+        subsystem = subsystem or getOutlineSubsystem(pawn)
         if not utils.isValid(subsystem) then
             return
         end
@@ -118,6 +161,14 @@ return function(config, utils, cache, chestMemory)
         local configObject = utils.getProp(subsystem, "Config")
         if not utils.isValid(configObject) then
             return
+        end
+
+        local subsystemWorldAddress = getObjectWorldAddress(subsystem)
+        if subsystemWorldAddress ~= nil and subsystemWorldAddress ~= lastOutlineWorldAddress then
+            configuredOutlineConfigAddress = nil
+            baseClosestThickness = nil
+            baseFarthestThickness = nil
+            lastOutlineWorldAddress = subsystemWorldAddress
         end
 
         local configAddress = utils.getAddress(configObject)
@@ -200,6 +251,24 @@ return function(config, utils, cache, chestMemory)
         end
 
         utils.debugLog("Applied outline visibility config")
+    end
+
+    function M.refreshOutlineSettings()
+        local pawn = utils.getPlayerPawn()
+        if utils.isValid(pawn) then
+            checkWorldReload(pawn)
+        end
+
+        local subsystem = getOutlineSubsystem(pawn)
+        if not utils.isValid(subsystem) then
+            return false
+        end
+
+        applyOutlineConfig(subsystem, pawn)
+        pcall(function()
+            subsystem:SetIsSystemEnabled(true)
+        end)
+        return true
     end
 
     local function isLootableCorpse(actor, pawn)
@@ -604,8 +673,8 @@ return function(config, utils, cache, chestMemory)
 
     function M.scanAndHighlight()
         local scanStartMs = nowMs()
-        local subsystem = getOutlineSubsystem()
         local pawn = utils.getPlayerPawn()
+        local subsystem = getOutlineSubsystem(pawn)
 
         if not utils.isValid(subsystem) then
             utils.debugLog("OutlineSubsystem not found")
@@ -616,6 +685,8 @@ return function(config, utils, cache, chestMemory)
             utils.debugLog("Player pawn not found")
             return
         end
+
+        checkWorldReload(pawn)
 
         if #cache.items == 0
             or (config.HIGHLIGHT_CORPSES and #cache.corpses == 0)
@@ -634,7 +705,7 @@ return function(config, utils, cache, chestMemory)
         local scanId = activeScanId
 
         local outlineStartMs = nowMs()
-        applyOutlineConfig(subsystem)
+        applyOutlineConfig(subsystem, pawn)
         utils.debugLog("ScanTiming outline_config=" .. tostring(elapsedMs(outlineStartMs)) .. "ms")
 
         pcall(function()

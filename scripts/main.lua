@@ -38,6 +38,15 @@ ExecuteWithDelay(3000, function()
     end)
 end)
 
+local function outlineWatchdog()
+    ExecuteInGameThread(function()
+        scanner.refreshOutlineSettings()
+    end)
+    ExecuteWithDelay(2000, outlineWatchdog)
+end
+
+ExecuteWithDelay(2000, outlineWatchdog)
+
 RegisterKeyBind(config.HIGHLIGHT_KEY, function()
     ExecuteInGameThread(function()
         scanner.scanAndHighlight()
