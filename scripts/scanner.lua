@@ -12,6 +12,7 @@ return function(config, utils, cache, chestMemory)
     local chestLocationCache = {}
     local chestTypeCache = {}
     local chestStateLogged = {}
+    local itemStateLogged = {}
     local scanBatchSize = 16
     local lastCorpseRefreshMs = 0
     local corpseRefreshIntervalMs = 1000
@@ -19,6 +20,11 @@ return function(config, utils, cache, chestMemory)
     local chestKeywords = {
         "chest", "box", "barrel", "basket", "container", "safe", "crate",
         "cupboard", "wardrobe", "locker", "urn", "tomb", "sarcophagus"
+    }
+    local ignoredItemKeywords = {
+        "itai_",
+        "orebag",
+        "pouch",
     }
 
     local function nowMs()
@@ -377,6 +383,65 @@ return function(config, utils, cache, chestMemory)
         return result
     end
 
+    local function shouldHighlightItem(actor)
+        if not utils.isValid(actor) then
+            return false
+        end
+
+        local ok, fullName = pcall(function()
+            return actor:GetFullName()
+        end)
+        if not ok then
+            return false
+        end
+
+        local nameLower = string.lower(tostring(fullName or ""))
+        for _, keyword in ipairs(ignoredItemKeywords) do
+            if string.find(nameLower, keyword, 1, true) then
+                return false
+            end
+        end
+
+        return utils.getInteractiveComponent(actor) ~= nil
+    end
+
+    local function logItemState(actor, reason, px, py, pz)
+        if not config.LOG_ITEM_STATE then
+            return
+        end
+
+        local address = utils.getAddress(actor)
+        if address == nil or itemStateLogged[address] then
+            return
+        end
+
+        local ix, iy, iz = utils.getLocation(actor)
+        if ix == nil or px == nil then
+            return
+        end
+
+        local dx = ix - px
+        local dy = iy - py
+        local dz = iz - pz
+        local distance = math.sqrt(dx * dx + dy * dy + dz * dz)
+        if distance > config.RADIUS then
+            return
+        end
+
+        itemStateLogged[address] = true
+        local name = "unknown"
+        pcall(function()
+            name = tostring(actor:GetFullName())
+        end)
+
+        utils.log(
+            "ItemState " .. tostring(address)
+            .. " " .. tostring(reason)
+            .. " | distance=" .. string.format("%.1f", distance)
+            .. " | name=" .. tostring(name)
+        )
+    end
+
     local function resolveHighlightedComponent(entry)
         if type(entry) ~= "table" then
             return nil
@@ -501,7 +566,10 @@ return function(config, utils, cache, chestMemory)
                         if distanceSquared <= radiusSquared then
                             if targetKind == "item" then
                                 local component = utils.getInteractiveComponent(actor)
-                                if component and addHighlight(subsystem, actor, component, utils.getInteractiveComponent) then
+                                if not shouldHighlightItem(actor) then
+                                    logItemState(actor, "rejected_filtered", px, py, pz)
+                                elseif component and addHighlight(subsystem, actor, component, utils.getInteractiveComponent) then
+                                    logItemState(actor, "accepted", px, py, pz)
                                     state.count = state.count + 1
                                 end
                             elseif targetKind == "corpse" then

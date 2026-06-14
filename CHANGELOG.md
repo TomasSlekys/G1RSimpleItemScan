@@ -4,6 +4,8 @@
 
 - Fixed cases where some nearby items could be missed until restarting the game.
 - Improved startup target collection so already loaded items and chests are picked up more reliably.
+- Excluded AI/helper-style bag items from normal item highlighting.
+- Added optional item debug logging to help identify unwanted highlighted objects.
 
 ## v1.0.7
 

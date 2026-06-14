@@ -53,9 +53,13 @@ return {
     -- Useful for troubleshooting why some corpses are not highlighted.
     log_corpse_state = false,
 
+    -- Logs nearby item scan decisions to the UE4SS log.
+    -- Useful for identifying highlighted items that should be excluded.
+    log_item_state = false,
+
     -- When true, opened chests are remembered in a text file and skipped in later scans.
     -- Experimental: this is intended to reduce highlights on already looted containers.
-    remember_opened_chests = false,
+    remember_opened_chests = true,
 
     -- Manual memory slot name used for remembered opened chests.
     -- Change this when playing on a different save or character profile so chest memory stays separate.

@@ -13,6 +13,7 @@ local DEFAULT_CONFIG = {
     debug_mode = true,
     log_chest_state = false,
     log_corpse_state = false,
+    log_item_state = false,
 }
 
 local function scriptRoot()
@@ -101,4 +102,5 @@ return {
     DEBUG_MODE = cfgBoolean("debug_mode"),
     LOG_CHEST_STATE = cfgBoolean("log_chest_state"),
     LOG_CORPSE_STATE = cfgBoolean("log_corpse_state"),
+    LOG_ITEM_STATE = cfgBoolean("log_item_state"),
 }
