@@ -38,14 +38,14 @@ ExecuteWithDelay(3000, function()
     end)
 end)
 
-local function outlineWatchdog()
+local function reapplyOutlineSettingsOnce()
     ExecuteInGameThread(function()
         scanner.refreshOutlineSettings()
     end)
-    ExecuteWithDelay(2000, outlineWatchdog)
 end
 
-ExecuteWithDelay(2000, outlineWatchdog)
+ExecuteWithDelay(2000, reapplyOutlineSettingsOnce)
+ExecuteWithDelay(5000, reapplyOutlineSettingsOnce)
 
 RegisterKeyBind(config.HIGHLIGHT_KEY, function()
     ExecuteInGameThread(function()

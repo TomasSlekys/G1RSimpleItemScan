@@ -1,5 +1,9 @@
 # Changelog
 
+## v1.0.9
+
+- Fixed a periodic background stutter that could happen even without pressing the scan key.
+
 ## v1.0.8
 
 - Fixed cases where some nearby items could be missed until restarting the game.
