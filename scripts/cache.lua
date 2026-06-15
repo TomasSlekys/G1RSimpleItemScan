@@ -256,6 +256,18 @@ return function(config, utils)
         end
     end
 
+    function M.reset()
+        M.items = {}
+        M.corpses = {}
+        M.chests = {}
+        M.itemAddresses = {}
+        M.corpseAddresses = {}
+        M.chestAddresses = {}
+        M.itemBuckets = {}
+        M.chestBuckets = {}
+        utils.debugLog("Cleared cached targets for world change")
+    end
+
     function M.rebuildAddressSets()
         M.itemAddresses = rebuildAddressSet(M.items)
         M.corpseAddresses = rebuildAddressSet(M.corpses)

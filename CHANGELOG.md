@@ -1,5 +1,9 @@
 # Changelog
 
+## v1.0.10
+
+- Reduced crash risk after quickloads and world changes by clearing stale cached scan targets before the next scan.
+
 ## v1.0.9
 
 - Fixed a periodic background stutter that could happen even without pressing the scan key.

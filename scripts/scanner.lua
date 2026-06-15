@@ -114,10 +114,26 @@ return function(config, utils, cache, chestMemory)
         lastOutlineWorldAddress = nil
     end
 
+    local function resetScanState()
+        activeScanId = activeScanId + 1
+        highlighted = {}
+        highlightedByAddress = {}
+        itemLocationCache = {}
+        chestLocationCache = {}
+        chestTypeCache = {}
+        chestStateLogged = {}
+        itemStateLogged = {}
+        corpseRefreshQueued = false
+        lastCorpseRefreshMs = 0
+        cache.reset()
+        utils.debugLog("Reset scan state for world change")
+    end
+
     local function checkWorldReload(pawn)
         local pawnAddress = utils.getAddress(pawn)
         if pawnAddress ~= nil and lastPawnAddress ~= nil and pawnAddress ~= lastPawnAddress then
             resetOutlineCache()
+            resetScanState()
             utils.debugLog("Detected world/pawn change, resetting outline cache")
         end
         lastPawnAddress = pawnAddress
@@ -674,12 +690,6 @@ return function(config, utils, cache, chestMemory)
     function M.scanAndHighlight()
         local scanStartMs = nowMs()
         local pawn = utils.getPlayerPawn()
-        local subsystem = getOutlineSubsystem(pawn)
-
-        if not utils.isValid(subsystem) then
-            utils.debugLog("OutlineSubsystem not found")
-            return
-        end
 
         if not utils.isValid(pawn) then
             utils.debugLog("Player pawn not found")
@@ -687,6 +697,12 @@ return function(config, utils, cache, chestMemory)
         end
 
         checkWorldReload(pawn)
+        local subsystem = getOutlineSubsystem(pawn)
+
+        if not utils.isValid(subsystem) then
+            utils.debugLog("OutlineSubsystem not found")
+            return
+        end
 
         if #cache.items == 0
             or (config.HIGHLIGHT_CORPSES and #cache.corpses == 0)
