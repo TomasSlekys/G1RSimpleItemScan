@@ -1,5 +1,9 @@
 # Changelog
 
+## v1.0.11
+
+- Added support for using the scan key while holding common modifier keys such as Shift, Control, or Alt.
+
 ## v1.0.10
 
 - Reduced crash risk after quickloads and world changes by clearing stale cached scan targets before the next scan.

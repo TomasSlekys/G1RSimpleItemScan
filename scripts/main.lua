@@ -47,8 +47,39 @@ end
 ExecuteWithDelay(2000, reapplyOutlineSettingsOnce)
 ExecuteWithDelay(5000, reapplyOutlineSettingsOnce)
 
-RegisterKeyBind(config.HIGHLIGHT_KEY, function()
+local ModifierKey = rawget(_G, "ModifierKey")
+
+local function doScan()
     ExecuteInGameThread(function()
         scanner.scanAndHighlight()
     end)
-end)
+end
+
+-- Register the bare key so scans fire with no modifier held.
+RegisterKeyBind(config.HIGHLIGHT_KEY, doScan)
+
+-- Also register with SHIFT, CONTROL and ALT so the same key fires even when
+-- any of those modifiers is held (UE4SS requires an explicit registration
+-- per modifier combination; without it the bare-key bind is silently
+-- suppressed whenever a modifier is down).
+if ModifierKey then
+    local modifierNameGroups = {
+        { "SHIFT" },
+        { "CONTROL" },
+        { "ALT" },
+    }
+
+    for _, names in ipairs(modifierNameGroups) do
+        local mod = nil
+        for _, modName in ipairs(names) do
+            mod = ModifierKey[modName]
+            if mod then
+                break
+            end
+        end
+
+        if mod then
+            pcall(RegisterKeyBind, config.HIGHLIGHT_KEY, { mod }, doScan)
+        end
+    end
+end
