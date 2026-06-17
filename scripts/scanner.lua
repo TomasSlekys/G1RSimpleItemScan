@@ -776,6 +776,14 @@ return function(config, utils, cache, chestMemory)
                     return
                 end
 
+                if not utils.isValid(subsystem) or not utils.isValid(pawn) then
+                    activeScanId = activeScanId + 1
+                    highlighted = {}
+                    highlightedByAddress = {}
+                    utils.debugLog("Scan cancelled: subsystem or pawn became invalid between batches")
+                    return
+                end
+
                 state.batchCount = state.batchCount + 1
                 local done = processScanBatch(subsystem, pawn, px, py, pz, radiusSquared, state)
                 if done then

@@ -3,6 +3,7 @@
 ## v1.0.11
 
 - Added support for using the scan key while holding common modifier keys such as Shift, Control, or Alt.
+- Improved scan stability during loading and quickloads.
 
 ## v1.0.10
 
