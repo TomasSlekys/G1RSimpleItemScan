@@ -9,7 +9,7 @@ return {
 
     -- How long highlighted targets stay outlined after a scan, in seconds.
     -- Pressing the scan key again refreshes the timer for existing outlines.
-    duration = 5.0,
+    duration = 8.0,
 
     -- Outline stencil slot passed to the game's outline subsystem.
     -- Default 2 matches the current mod behavior and should usually be left alone.

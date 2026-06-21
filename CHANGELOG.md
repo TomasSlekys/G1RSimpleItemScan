@@ -3,6 +3,7 @@
 ## v1.0.12
 
 - Added an option to disable automatic background updates and refresh nearby targets only when scanning.
+- Increased the default highlight duration from 5 to 8 seconds.
 
 ## v1.0.11
 

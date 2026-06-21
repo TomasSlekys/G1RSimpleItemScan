@@ -1,7 +1,7 @@
 local DEFAULT_CONFIG = {
     highlight_key = "X",
     radius = 2500.0,
-    duration = 5.0,
+    duration = 8.0,
     stencil_usage = 2,
     use_thick_outline = true,
     highlight_corpses = true,
