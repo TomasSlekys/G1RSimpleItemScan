@@ -1,5 +1,9 @@
 # Changelog
 
+## v1.0.12
+
+- Added an option to disable automatic background updates and refresh nearby targets only when scanning.
+
 ## v1.0.11
 
 - Added support for using the scan key while holding common modifier keys such as Shift, Control, or Alt.

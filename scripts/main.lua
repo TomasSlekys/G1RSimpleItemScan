@@ -24,28 +24,32 @@ local scanner = dofile(SCRIPT_ROOT .. "scanner.lua")(config, utils, cache, chest
 utils.log("Loaded. Press " .. config.HIGHLIGHT_KEY_NAME .. " to temporarily highlight nearby items and lootable corpses.")
 utils.debugLog("Debug mode enabled")
 
-cache.registerItemStream()
-cache.registerChestStream()
-chestMemory.registerHooks()
+if config.BACKGROUND_UPDATES then
+    cache.registerItemStream()
+    cache.registerChestStream()
+    chestMemory.registerHooks()
 
-ExecuteInGameThread(function()
-    cache.refreshTargets()
-end)
-
-ExecuteWithDelay(3000, function()
     ExecuteInGameThread(function()
-        cache.refreshStaticTargets()
+        cache.refreshTargets()
     end)
-end)
 
-local function reapplyOutlineSettingsOnce()
-    ExecuteInGameThread(function()
-        scanner.refreshOutlineSettings()
+    ExecuteWithDelay(3000, function()
+        ExecuteInGameThread(function()
+            cache.refreshStaticTargets()
+        end)
     end)
+
+    local function reapplyOutlineSettingsOnce()
+        ExecuteInGameThread(function()
+            scanner.refreshOutlineSettings()
+        end)
+    end
+
+    ExecuteWithDelay(2000, reapplyOutlineSettingsOnce)
+    ExecuteWithDelay(5000, reapplyOutlineSettingsOnce)
+else
+    utils.log("Background updates disabled; target caches will refresh when scanning")
 end
-
-ExecuteWithDelay(2000, reapplyOutlineSettingsOnce)
-ExecuteWithDelay(5000, reapplyOutlineSettingsOnce)
 
 local ModifierKey = rawget(_G, "ModifierKey")
 

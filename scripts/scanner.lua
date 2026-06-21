@@ -704,7 +704,16 @@ return function(config, utils, cache, chestMemory)
             return
         end
 
-        if #cache.items == 0
+        if not config.BACKGROUND_UPDATES then
+            local refreshStartMs = nowMs()
+            cache.refreshTargets()
+            utils.debugLog(
+                "ScanTiming on_demand_refresh=" .. tostring(elapsedMs(refreshStartMs))
+                .. "ms items=" .. tostring(#cache.items)
+                .. " corpses=" .. tostring(#cache.corpses)
+                .. " chests=" .. tostring(#cache.chests)
+            )
+        elseif #cache.items == 0
             or (config.HIGHLIGHT_CORPSES and #cache.corpses == 0)
             or (config.HIGHLIGHT_CHESTS and #cache.chests == 0) then
             local refreshStartMs = nowMs()
@@ -759,7 +768,9 @@ return function(config, utils, cache, chestMemory)
                 .. " chests=" .. tostring(#cache.chests)
             )
 
-            queueCorpseRefresh()
+            if config.BACKGROUND_UPDATES then
+                queueCorpseRefresh()
+            end
 
             ExecuteWithDelay(math.floor(config.DURATION * 1000), function()
                 ExecuteInGameThread(function()
