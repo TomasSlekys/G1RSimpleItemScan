@@ -26,11 +26,9 @@ return {
     -- When true, chests are included in scans.
     highlight_chests = true,
 
-    -- Keeps target caches updated automatically while playing.
-    -- Set to false to disable startup refreshes, live object callbacks, delayed
-    -- outline refreshes, and automatic opened-chest tracking. With this off,
-    -- all target discovery happens when the scan key is pressed instead, which
-    -- may cause a larger hitch on each scan.
+    -- Keeps outline settings refreshed automatically and records opened chests.
+    -- Set to false to disable those automatic tasks. Nearby target discovery
+    -- still happens only when the scan key is pressed.
     background_updates = true,
 
     -- Outline opacity applied to the outline subsystem config.

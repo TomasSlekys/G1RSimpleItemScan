@@ -315,7 +315,9 @@ return function(config, utils)
         end)
     end
 
-    ensureLoaded()
+    if config.BACKGROUND_UPDATES and config.REMEMBER_OPENED_CHESTS then
+        ensureLoaded()
+    end
 
     return M
 end

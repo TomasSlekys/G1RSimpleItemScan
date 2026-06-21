@@ -81,11 +81,8 @@ local highlightKeyName = cfgString("highlight_key")
 local outlineColor = cfgColor("outline_color", { 1.0, 0.85, 0.2 })
 
 return {
-    ITEM_CLASS = "ItemVisualWorld",
     ITEM_CLASS_PATH = "/Script/G1R.ItemVisualWorld",
-    CORPSE_CLASS = "Character",
     CORPSE_CLASS_PATH = "/Script/Engine.Character",
-    CHEST_CLASS = "InteractiveObjectActor",
     CHEST_CLASS_PATH = "/Script/G1R.InteractiveObjectActor",
     HIGHLIGHT_KEY_NAME = highlightKeyName,
     HIGHLIGHT_KEY = Key[highlightKeyName] or Key[DEFAULT_CONFIG.highlight_key],

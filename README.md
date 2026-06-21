@@ -27,7 +27,7 @@ Main features
   - whether thick outlines are used; default: `enabled`
   - whether corpses are included; default: `enabled`
   - whether chests are included; default: `enabled`
-  - whether caches and outline settings update automatically in the background; default: `enabled` (when disabled, targets are discovered when you press the scan key)
+  - whether outline settings refresh automatically and opened chests are tracked; default: `enabled`
   - whether opened chests should be remembered and skipped later (EXPERIMENTAL); default: `disabled`
   - chest memory slot name for separate save/playthrough tracking; default: `default`
   - outline thickness; default: `thick outline enabled`, multiplier `2.0`

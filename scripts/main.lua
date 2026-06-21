@@ -25,19 +25,7 @@ utils.log("Loaded. Press " .. config.HIGHLIGHT_KEY_NAME .. " to temporarily high
 utils.debugLog("Debug mode enabled")
 
 if config.BACKGROUND_UPDATES then
-    cache.registerItemStream()
-    cache.registerChestStream()
     chestMemory.registerHooks()
-
-    ExecuteInGameThread(function()
-        cache.refreshTargets()
-    end)
-
-    ExecuteWithDelay(3000, function()
-        ExecuteInGameThread(function()
-            cache.refreshStaticTargets()
-        end)
-    end)
 
     local function reapplyOutlineSettingsOnce()
         ExecuteInGameThread(function()
@@ -48,7 +36,7 @@ if config.BACKGROUND_UPDATES then
     ExecuteWithDelay(2000, reapplyOutlineSettingsOnce)
     ExecuteWithDelay(5000, reapplyOutlineSettingsOnce)
 else
-    utils.log("Background updates disabled; target caches will refresh when scanning")
+    utils.log("Automatic outline refresh and opened-chest tracking disabled")
 end
 
 local ModifierKey = rawget(_G, "ModifierKey")

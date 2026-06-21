@@ -137,18 +137,5 @@ return function(modName, debugMode)
         return nil
     end
 
-    function M.addUniqueActor(cache, addressSet, actor)
-        local address = M.getAddress(actor)
-        if address ~= nil then
-            if addressSet[address] then
-                return false
-            end
-            addressSet[address] = true
-        end
-
-        cache[#cache + 1] = actor
-        return true
-    end
-
     return M
 end

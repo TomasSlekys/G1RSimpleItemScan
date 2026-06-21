@@ -3,6 +3,7 @@
 ## v1.0.13
 
 - Corrected the documented key name for numpad 0.
+- Reworked target discovery to scan only nearby actors when the scan key is pressed, reducing background work and removing the older full-world scanning fallback.
 
 ## v1.0.12
 
