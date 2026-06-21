@@ -1,5 +1,9 @@
 # Changelog
 
+## v1.0.13
+
+- Corrected the documented key name for numpad 0.
+
 ## v1.0.12
 
 - Added an option to disable automatic background updates and refresh nearby targets only when scanning.

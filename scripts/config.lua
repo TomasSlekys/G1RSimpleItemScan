@@ -1,6 +1,6 @@
 return {
     -- Keyboard key used to trigger the scan.
-    -- Use a UE4SS/OpenUnreal key name such as "X", "F6", "V", "NumPadZero".
+    -- Use a UE4SS/OpenUnreal key name such as "X", "F6", "V", "NUM_ZERO".
     highlight_key = "X",
 
     -- Scan radius in Unreal units.
