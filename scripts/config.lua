@@ -29,11 +29,15 @@ return {
     -- When true, chests are included in scans.
     highlight_chests = true,
 
+    -- When true, chests with a confirmed empty live inventory are skipped.
+    -- Chests whose inventory is not loaded yet remain visible.
+    skip_empty_chests = true,
+
     -- When true, NPC pickpocket pouch actors are included in scans.
     highlight_pouches = true,
 
-    -- Keeps outline settings refreshed automatically and records opened chests.
-    -- Set to false to disable those automatic tasks. Nearby target discovery
+    -- Keeps outline settings refreshed automatically.
+    -- Set to false to disable that automatic task. Nearby target discovery
     -- still happens only when the scan key is pressed.
     background_updates = true,
 
@@ -68,11 +72,4 @@ return {
     -- Useful for identifying highlighted items that should be excluded.
     log_item_state = false,
 
-    -- When true, opened chests are remembered in a text file and skipped in later scans.
-    -- Experimental: this is intended to reduce highlights on already looted containers.
-    remember_opened_chests = true,
-
-    -- Manual memory slot name used for remembered opened chests.
-    -- Change this when playing on a different save or character profile so chest memory stays separate.
-    chest_memory_slot = "default",
 }

@@ -18,15 +18,12 @@ local MOD_NAME = SCRIPT_ROOT:match("/Mods/([^/]+)/Scripts/$") or "SimpleItemScan
 local config = dofile(SCRIPT_ROOT .. "config_loader.lua")
 local utils = dofile(SCRIPT_ROOT .. "utils.lua")(MOD_NAME, config.DEBUG_MODE)
 local cache = dofile(SCRIPT_ROOT .. "cache.lua")(config, utils)
-local chestMemory = dofile(SCRIPT_ROOT .. "chest_memory.lua")(config, utils)
-local scanner = dofile(SCRIPT_ROOT .. "scanner.lua")(config, utils, cache, chestMemory)
+local scanner = dofile(SCRIPT_ROOT .. "scanner.lua")(config, utils, cache)
 
 utils.log("Loaded. Press " .. config.HIGHLIGHT_KEY_NAME .. " to temporarily highlight nearby items and lootable corpses.")
 utils.debugLog("Debug mode enabled")
 
 if config.BACKGROUND_UPDATES then
-    chestMemory.registerHooks()
-
     local function reapplyOutlineSettingsOnce()
         ExecuteInGameThread(function()
             scanner.refreshOutlineSettings()
@@ -36,7 +33,7 @@ if config.BACKGROUND_UPDATES then
     ExecuteWithDelay(2000, reapplyOutlineSettingsOnce)
     ExecuteWithDelay(5000, reapplyOutlineSettingsOnce)
 else
-    utils.log("Automatic outline refresh and opened-chest tracking disabled")
+    utils.log("Automatic outline refresh disabled")
 end
 
 local ModifierKey = rawget(_G, "ModifierKey")

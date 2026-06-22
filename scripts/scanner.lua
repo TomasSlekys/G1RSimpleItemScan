@@ -1,4 +1,4 @@
-return function(config, utils, cache, chestMemory)
+return function(config, utils, cache)
     local M = {}
 
     local highlighted = {}
@@ -6,6 +6,7 @@ return function(config, utils, cache, chestMemory)
     local cachedOutlineSubsystem = nil
     local cachedOwnershipSubsystem = nil
     local cachedDefaultOutlineConfig = nil
+    local cachedDataModuleLibrary = nil
     local baseClosestThickness = nil
     local baseFarthestThickness = nil
     local lastPawnAddress = nil
@@ -163,6 +164,100 @@ return function(config, utils, cache, chestMemory)
         end
 
         return nil
+    end
+
+    local function getDataModuleLibrary()
+        if utils.isValid(cachedDataModuleLibrary) then
+            return cachedDataModuleLibrary
+        end
+
+        local ok, library = pcall(function()
+            return StaticFindObject("/Script/G1R.Default__DataModuleLibrary")
+        end)
+        if ok and utils.isValid(library) then
+            cachedDataModuleLibrary = library
+            return library
+        end
+
+        return nil
+    end
+
+    local function unwrapValue(value)
+        if value == nil then
+            return nil
+        end
+
+        local ok, unwrapped = pcall(function()
+            return value:get()
+        end)
+        if ok and unwrapped ~= nil then
+            return unwrapped
+        end
+        return value
+    end
+
+    local function forEachCollection(collection, callback)
+        collection = unwrapValue(collection)
+        if collection == nil then
+            return false
+        end
+
+        local ok = pcall(function()
+            for _, entry in pairs(collection) do
+                callback(unwrapValue(entry))
+            end
+        end)
+        if ok then
+            return true
+        end
+
+        return pcall(function()
+            collection:ForEach(function(_, entry)
+                callback(unwrapValue(entry))
+            end)
+        end)
+    end
+
+    local function getContainerLootCount(actor)
+        local library = getDataModuleLibrary()
+        if not utils.isValid(library) then
+            return nil, "library_unavailable"
+        end
+
+        local ok, container = pcall(function()
+            return library:GetContainerDataModule(actor)
+        end)
+        if not ok or not utils.isValid(container) then
+            return nil, "container_module_unavailable"
+        end
+
+        local inventory = unwrapValue(utils.getProp(container, "m_Inventory"))
+        local values = unwrapValue(utils.getProp(inventory, "m_Values"))
+        local inventoryEntries = utils.getProp(values, "Items")
+        if inventoryEntries == nil then
+            return nil, "inventory_entries_unavailable"
+        end
+
+        local total = 0
+        local readable = forEachCollection(inventoryEntries, function(entry)
+            local slots = utils.getProp(entry, "m_Slots")
+            local slotsReadable = forEachCollection(slots, function(item)
+                local slotData = unwrapValue(utils.getProp(item, "m_SlotData"))
+                local definition = utils.getProp(slotData, "m_ItemDefinition")
+                local count = utils.getProp(slotData, "m_ItemCount")
+                if utils.isValid(definition) and type(count) == "number" and count > 0 then
+                    total = total + 1
+                end
+            end)
+            if not slotsReadable then
+                error("slots_unavailable")
+            end
+        end)
+        if not readable then
+            return nil, "inventory_slots_unavailable"
+        end
+
+        return total, "live_inventory"
     end
 
     local function unwrapEnumValue(value)
@@ -421,21 +516,40 @@ return function(config, utils, cache, chestMemory)
         return utils.getInteractiveComponent(actor)
     end
 
+    local function hasLiveContainerLoot(actor, address, fullName)
+        local component = utils.getInteractiveComponent(actor)
+        if not utils.isValid(component) then
+            return false
+        end
+
+        if not config.SKIP_EMPTY_CHESTS then
+            return true
+        end
+
+        local itemCount, source = getContainerLootCount(actor)
+        if config.LOG_CHEST_STATE then
+            utils.log(
+                "ChestInventory " .. tostring(address or "unknown")
+                .. " count=" .. tostring(itemCount)
+                .. " source=" .. tostring(source)
+                .. " | " .. tostring(fullName or "cached_container")
+            )
+        end
+
+        return itemCount == nil or itemCount > 0
+    end
+
     local function isLikelyLootContainerType(actor)
         if not config.HIGHLIGHT_CHESTS or not utils.isValid(actor) then
             return false
         end
 
         local address = utils.getAddress(actor)
-        if chestMemory and chestMemory.isRemembered(actor) then
-            if address ~= nil then
-                chestTypeCache[address] = false
-            end
+        if address ~= nil and chestTypeCache[address] == false then
             return false
         end
-
-        if address ~= nil and chestTypeCache[address] ~= nil then
-            return chestTypeCache[address]
+        if address ~= nil and chestTypeCache[address] == true then
+            return hasLiveContainerLoot(actor, address, nil)
         end
 
         local ok, fullName = pcall(function()
@@ -555,7 +669,10 @@ return function(config, utils, cache, chestMemory)
             utils.log("ChestState " .. tostring(address) .. " result=" .. tostring(result) .. " | name=" .. fullName)
         end
 
-        return result
+        if not result then
+            return false
+        end
+        return hasLiveContainerLoot(actor, address, fullName)
     end
 
     local function shouldHighlightItem(actor)

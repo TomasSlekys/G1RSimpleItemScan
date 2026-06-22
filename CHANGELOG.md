@@ -6,6 +6,7 @@
 - Added an optional red warning outline for items and chests owned by others.
 - Improved stability when pressing the scan key repeatedly in quick succession.
 - Added highlighting for NPC pickpocket pouches.
+- Replaced experimental opened-chest memory with live empty-chest detection.
 
 ## v1.0.13
 

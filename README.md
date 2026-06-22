@@ -11,14 +11,13 @@ Installation instructions
 3. Start the game with UE4SS / your Lua mod loader enabled.
 4. Enable `Accessibility > Object Outliner` in the game's settings.
 5. Edit `Scripts/config.lua` if you want to change the scan key, radius, duration, or outline settings.
-6. If you use chest memory on multiple saves or characters, set a different `chest_memory_slot` value in `Scripts/config.lua` for each one.
 
 Main features
 
 - Press the configured scan key ("X" by default) to highlight nearby world items, corpses, chests, and pickpocket pouches in a configurable radius (25m by default) around the player.
 - Scan radius and highlight duration are configurable in `Scripts/config.lua`.
 - Repeated scans refresh the timer on already highlighted targets instead of clearing them immediately.
-- Experimental chest memory can remember opened chests and stop highlighting them in later scans.
+- Chests with a confirmed empty live inventory can be skipped automatically.
 - Outline visibility can be tuned through config options such as thickness, opacity, and color.
 - Items and chests owned by someone else can use a separate red warning outline.
 - You can configure:
@@ -29,15 +28,17 @@ Main features
   - whether corpses are included; default: `enabled`
   - whether chests are included; default: `enabled`
   - whether NPC pickpocket pouches are included; default: `enabled`
-  - whether outline settings refresh automatically and opened chests are tracked; default: `enabled`
-  - whether opened chests should be remembered and skipped later (EXPERIMENTAL); default: `disabled`
-  - chest memory slot name for separate save/playthrough tracking; default: `default`
+  - whether outline settings refresh automatically; default: `enabled`
+  - whether confirmed empty chests are skipped (`skip_empty_chests`); default: `enabled`
   - outline thickness; default: `thick outline enabled`, multiplier `2.0`
   - outline opacity; default: `1.0`
   - outline color; default: white `1.0, 1.0, 1.0`
   - stealing warning outlines (`use_stealing_outline`); default: `enabled`
   - stealing warning color (`stealing_outline_color`); default: red-orange `{ 1.0, 0.2, 0.0 }`
   - debug logging; default: `disabled`
+  - chest inventory diagnostics (`log_chest_state`); default: `disabled`
+  - corpse detection diagnostics (`log_corpse_state`); default: `disabled`
+  - item detection diagnostics (`log_item_state`); default: `disabled`
 
 Requirements
 
