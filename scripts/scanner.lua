@@ -5,6 +5,7 @@ return function(config, utils, cache, chestMemory)
     local highlightedByAddress = {}
     local cachedOutlineSubsystem = nil
     local cachedOwnershipSubsystem = nil
+    local cachedDefaultOutlineConfig = nil
     local baseClosestThickness = nil
     local baseFarthestThickness = nil
     local lastPawnAddress = nil
@@ -148,6 +149,22 @@ return function(config, utils, cache, chestMemory)
         return nil
     end
 
+    local function getDefaultOutlineConfig()
+        if utils.isValid(cachedDefaultOutlineConfig) then
+            return cachedDefaultOutlineConfig
+        end
+
+        local ok, configObject = pcall(function()
+            return StaticFindObject("/Script/G1R.Default__OutlineSubsystemConfig")
+        end)
+        if ok and utils.isValid(configObject) then
+            cachedDefaultOutlineConfig = configObject
+            return configObject
+        end
+
+        return nil
+    end
+
     local function unwrapEnumValue(value)
         if type(value) == "number" then
             return value
@@ -243,13 +260,17 @@ return function(config, utils, cache, chestMemory)
         end
 
         -- Unreal may replace the config UObject while retaining its current values.
-        -- Capture the unmodified baseline only once so replacement objects cannot
-        -- turn the multiplier into repeated exponential growth.
+        -- Read the class defaults rather than the live config so hot-reloading the
+        -- Lua mod cannot treat an already multiplied value as the new baseline.
         if type(baseClosestThickness) ~= "number" then
-            baseClosestThickness = utils.getProp(configObject, "OutlineClosestThickness")
+            local defaultConfig = getDefaultOutlineConfig()
+            baseClosestThickness = utils.getProp(defaultConfig, "OutlineClosestThickness")
+                or utils.getProp(configObject, "OutlineClosestThickness")
         end
         if type(baseFarthestThickness) ~= "number" then
-            baseFarthestThickness = utils.getProp(configObject, "OutlineFarthestThickness")
+            local defaultConfig = getDefaultOutlineConfig()
+            baseFarthestThickness = utils.getProp(defaultConfig, "OutlineFarthestThickness")
+                or utils.getProp(configObject, "OutlineFarthestThickness")
         end
 
         utils.setProp(configObject, "OutlineClosestAlpha", config.OUTLINE_ALPHA)
