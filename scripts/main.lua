@@ -40,9 +40,20 @@ else
 end
 
 local ModifierKey = rawget(_G, "ModifierKey")
+local scanRequestPending = false
+local lastScanRequestTime = -1.0
+local minimumScanRequestInterval = 0.75
 
 local function doScan()
+    local currentTime = os.clock()
+    if scanRequestPending or currentTime - lastScanRequestTime < minimumScanRequestInterval then
+        return
+    end
+
+    scanRequestPending = true
+    lastScanRequestTime = currentTime
     ExecuteInGameThread(function()
+        scanRequestPending = false
         scanner.scanAndHighlight()
     end)
 end

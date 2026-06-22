@@ -10,7 +10,11 @@ return function(config, utils, cache, chestMemory)
     local lastPawnAddress = nil
     local lastOutlineWorldAddress = nil
     local activeScanId = 0
+    local scanInProgress = false
+    local lastScanStartedMs = -1000
+    local minimumScanIntervalMs = 750
     local chestTypeCache = {}
+    local stealingByAddress = {}
     local chestStateLogged = {}
     local itemStateLogged = {}
     local scanBatchSize = 16
@@ -63,9 +67,12 @@ return function(config, utils, cache, chestMemory)
 
     local function resetScanState()
         activeScanId = activeScanId + 1
+        scanInProgress = false
+        lastScanStartedMs = -1000
         highlighted = {}
         highlightedByAddress = {}
         chestTypeCache = {}
+        stealingByAddress = {}
         chestStateLogged = {}
         itemStateLogged = {}
         cache.reset()
@@ -173,6 +180,11 @@ return function(config, utils, cache, chestMemory)
             return false
         end
 
+        local address = utils.getAddress(actor)
+        if address ~= nil and stealingByAddress[address] ~= nil then
+            return stealingByAddress[address]
+        end
+
         local ownership = getOwnershipSubsystem(pawn)
         local characterState = utils.getProp(pawn, "m_CharacterState")
         if not utils.isValid(characterState) then
@@ -198,14 +210,20 @@ return function(config, utils, cache, chestMemory)
         end
 
         local flags = unwrapEnumValue(relation)
+        local stealing = false
         if flags ~= nil then
             -- OtherGuild (16) and OtherPersonal (32) are the game's stealing flags.
-            return math.floor(flags / 16) % 4 ~= 0
+            stealing = math.floor(flags / 16) % 4 ~= 0
+        else
+            local text = tostring(relation)
+            stealing = string.find(text, "OtherGuild", 1, true) ~= nil
+                or string.find(text, "OtherPersonal", 1, true) ~= nil
         end
 
-        local text = tostring(relation)
-        return string.find(text, "OtherGuild", 1, true) ~= nil
-            or string.find(text, "OtherPersonal", 1, true) ~= nil
+        if address ~= nil then
+            stealingByAddress[address] = stealing
+        end
+        return stealing
     end
 
     local function applyOutlineConfig(subsystem, pawn)
@@ -750,6 +768,15 @@ return function(config, utils, cache, chestMemory)
 
     function M.scanAndHighlight()
         local scanStartMs = nowMs()
+        if scanInProgress then
+            utils.debugLog("Scan ignored: previous scan still in progress")
+            return
+        end
+        if scanStartMs - lastScanStartedMs < minimumScanIntervalMs then
+            utils.debugLog("Scan ignored: button pressed too quickly")
+            return
+        end
+
         local pawn = utils.getPlayerPawn()
 
         if not utils.isValid(pawn) then
@@ -765,9 +792,13 @@ return function(config, utils, cache, chestMemory)
             return
         end
 
+        scanInProgress = true
+        lastScanStartedMs = scanStartMs
+
         local queryStartMs = nowMs()
         local nearbyTargets = cache.queryNearbyTargets(pawn, config.RADIUS)
         if nearbyTargets == nil then
+            scanInProgress = false
             utils.debugLog("Scan cancelled: native nearby query unavailable")
             return
         end
@@ -804,6 +835,7 @@ return function(config, utils, cache, chestMemory)
         }
 
         local function finishScan()
+            scanInProgress = false
             utils.debugLog("Highlighted " .. tostring(state.count) .. " nearby target(s)")
             utils.debugLog(
                 "ScanTiming total=" .. tostring(elapsedMs(scanStartMs))
@@ -831,6 +863,7 @@ return function(config, utils, cache, chestMemory)
 
                 if not utils.isValid(subsystem) or not utils.isValid(pawn) then
                     activeScanId = activeScanId + 1
+                    scanInProgress = false
                     highlighted = {}
                     highlightedByAddress = {}
                     utils.debugLog("Scan cancelled: subsystem or pawn became invalid between batches")
@@ -838,7 +871,13 @@ return function(config, utils, cache, chestMemory)
                 end
 
                 state.batchCount = state.batchCount + 1
-                local done = processScanBatch(subsystem, pawn, px, py, pz, state)
+                local ok, done = pcall(processScanBatch, subsystem, pawn, px, py, pz, state)
+                if not ok then
+                    activeScanId = activeScanId + 1
+                    scanInProgress = false
+                    utils.log("Scan cancelled after a Lua error: " .. tostring(done))
+                    return
+                end
                 if done then
                     finishScan()
                 else
