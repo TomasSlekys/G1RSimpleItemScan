@@ -20,6 +20,7 @@ Main features
 - Repeated scans refresh the timer on already highlighted targets instead of clearing them immediately.
 - Experimental chest memory can remember opened chests and stop highlighting them in later scans.
 - Outline visibility can be tuned through config options such as thickness, opacity, and color.
+- Items and chests owned by someone else can use a separate red warning outline.
 - You can configure:
   - the scan button; default: `X`
   - scan radius; default: `2500 uu` (about `25m`)
@@ -33,6 +34,8 @@ Main features
   - outline thickness; default: `thick outline enabled`, multiplier `2.0`
   - outline opacity; default: `1.0`
   - outline color; default: white `1.0, 1.0, 1.0`
+  - stealing warning outlines (`use_stealing_outline`); default: `enabled`
+  - stealing warning color (`stealing_outline_color`); default: red-orange `{ 1.0, 0.2, 0.0 }`
   - debug logging; default: `disabled`
 
 Requirements

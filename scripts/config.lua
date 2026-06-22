@@ -11,9 +11,12 @@ return {
     -- Pressing the scan key again refreshes the timer for existing outlines.
     duration = 8.0,
 
-    -- Outline stencil slot passed to the game's outline subsystem.
-    -- Default 2 matches the current mod behavior and should usually be left alone.
-    stencil_usage = 2,
+    -- Uses a warning color for world items and chests owned by someone else.
+    -- If ownership cannot be determined, the normal outline color is used.
+    use_stealing_outline = true,
+
+    -- Outline color for items and chests that would count as stealing.
+    stealing_outline_color = { 1.0, 0.2, 0.0 },
 
     -- Enables the subsystem's built-in "thick outline" mode.
     -- Leave this on unless you want a thinner, more vanilla-looking outline.

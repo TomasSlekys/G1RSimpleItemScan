@@ -4,6 +4,7 @@ return function(config, utils, cache, chestMemory)
     local highlighted = {}
     local highlightedByAddress = {}
     local cachedOutlineSubsystem = nil
+    local cachedOwnershipSubsystem = nil
     local baseClosestThickness = nil
     local baseFarthestThickness = nil
     local lastPawnAddress = nil
@@ -56,6 +57,7 @@ return function(config, utils, cache, chestMemory)
 
     local function resetOutlineCache()
         cachedOutlineSubsystem = nil
+        cachedOwnershipSubsystem = nil
         lastOutlineWorldAddress = nil
     end
 
@@ -109,6 +111,103 @@ return function(config, utils, cache, chestMemory)
         return nil
     end
 
+    local function getOwnershipSubsystem(pawn)
+        if utils.isValid(cachedOwnershipSubsystem) and utils.isValid(pawn) then
+            local pawnWorldAddress = getObjectWorldAddress(pawn)
+            local subsystemWorldAddress = getObjectWorldAddress(cachedOwnershipSubsystem)
+            if pawnWorldAddress ~= nil and subsystemWorldAddress == pawnWorldAddress then
+                return cachedOwnershipSubsystem
+            end
+        end
+
+        cachedOwnershipSubsystem = nil
+        local pawnWorldAddress = getObjectWorldAddress(pawn)
+        local list = FindAllOf("OwnershipSubsystem")
+        if not list then
+            return nil
+        end
+
+        for _, obj in pairs(list) do
+            if utils.isValid(obj) then
+                local subsystemWorldAddress = getObjectWorldAddress(obj)
+                if subsystemWorldAddress ~= nil
+                    and (pawnWorldAddress == nil or subsystemWorldAddress == pawnWorldAddress) then
+                    cachedOwnershipSubsystem = obj
+                    return obj
+                end
+            end
+        end
+
+        return nil
+    end
+
+    local function unwrapEnumValue(value)
+        if type(value) == "number" then
+            return value
+        end
+
+        local ok, unwrapped = pcall(function()
+            return value:get()
+        end)
+        if ok and type(unwrapped) == "number" then
+            return unwrapped
+        end
+
+        local text = tostring(ok and unwrapped or value)
+        local numeric = tonumber(text)
+        if numeric ~= nil then
+            return numeric
+        end
+        if string.find(text, "OutlineInSight", 1, true) then
+            return 1
+        end
+        if string.find(text, "OutlineAction", 1, true) then
+            return 2
+        end
+
+        return nil
+    end
+
+    local function isStealingTarget(actor, pawn, targetKind)
+        if not config.USE_STEALING_OUTLINE or not utils.isValid(actor) or not utils.isValid(pawn) then
+            return false
+        end
+
+        local ownership = getOwnershipSubsystem(pawn)
+        local characterState = utils.getProp(pawn, "m_CharacterState")
+        if not utils.isValid(characterState) then
+            local okState, state = pcall(function()
+                return pawn:BP_GetCharacterState()
+            end)
+            if okState then
+                characterState = state
+            end
+        end
+        if not utils.isValid(ownership) or not utils.isValid(characterState) then
+            return false
+        end
+
+        local ok, relation = pcall(function()
+            if targetKind == "item" then
+                return ownership:GetOwnershipRelationOfItemInWorld(characterState, actor)
+            end
+            return ownership:GetOwnershipRelationOfInteractiveObjectInWorld(characterState, actor)
+        end)
+        if not ok then
+            return false
+        end
+
+        local flags = unwrapEnumValue(relation)
+        if flags ~= nil then
+            -- OtherGuild (16) and OtherPersonal (32) are the game's stealing flags.
+            return math.floor(flags / 16) % 4 ~= 0
+        end
+
+        local text = tostring(relation)
+        return string.find(text, "OtherGuild", 1, true) ~= nil
+            or string.find(text, "OtherPersonal", 1, true) ~= nil
+    end
+
     local function applyOutlineConfig(subsystem, pawn)
         subsystem = subsystem or getOutlineSubsystem(pawn)
         if not utils.isValid(subsystem) then
@@ -150,7 +249,7 @@ return function(config, utils, cache, chestMemory)
         if stencilMap ~= nil and type(config.OUTLINE_COLOR) == "table" then
             local currentFn = nil
 
-            local function stencilForEachCallback(_, valueProxy)
+            local function stencilForEachCallback(keyProxy, valueProxy)
                 if currentFn == nil then
                     return
                 end
@@ -169,7 +268,7 @@ return function(config, utils, cache, chestMemory)
 
                 local color = utils.getProp(value, "Color")
                 if color ~= nil then
-                    currentFn(color, value)
+                    currentFn(keyProxy, color, value)
                 end
             end
 
@@ -182,10 +281,21 @@ return function(config, utils, cache, chestMemory)
                 return ok
             end
 
-            local function applyStencilColor(color, value)
-                utils.setProp(color, "R", config.OUTLINE_COLOR[1])
-                utils.setProp(color, "G", config.OUTLINE_COLOR[2])
-                utils.setProp(color, "B", config.OUTLINE_COLOR[3])
+            local function applyStencilColor(keyProxy, color, value)
+                local usage = unwrapEnumValue(keyProxy)
+                local selectedColor = nil
+                if usage == config.STENCIL_USAGE then
+                    selectedColor = config.OUTLINE_COLOR
+                elseif config.USE_STEALING_OUTLINE and usage == config.STEALING_STENCIL_USAGE then
+                    selectedColor = config.STEALING_OUTLINE_COLOR
+                end
+                if selectedColor == nil then
+                    return
+                end
+
+                utils.setProp(color, "R", selectedColor[1])
+                utils.setProp(color, "G", selectedColor[2])
+                utils.setProp(color, "B", selectedColor[3])
                 utils.setProp(color, "A", config.OUTLINE_ALPHA)
                 utils.setProp(value, "Color", color)
             end
@@ -510,14 +620,18 @@ return function(config, utils, cache, chestMemory)
         utils.debugLog("Removed temporary outlines")
     end
 
-    local function addHighlight(subsystem, actor, component, resolveComponent)
+    local function addHighlight(subsystem, actor, component, resolveComponent, stencilUsage)
         local address = utils.getAddress(component)
         if address ~= nil and highlightedByAddress[address] then
             return false
         end
 
         local ok = pcall(function()
-            subsystem:AddOutline(component, config.STENCIL_USAGE, config.USE_THICK_OUTLINE)
+            subsystem:AddOutline(
+                component,
+                stencilUsage or config.STENCIL_USAGE,
+                config.USE_THICK_OUTLINE
+            )
         end)
 
         if not ok then
@@ -578,9 +692,22 @@ return function(config, utils, cache, chestMemory)
                         local component = utils.getInteractiveComponent(actor)
                         if not shouldHighlightItem(actor) then
                             logItemState(actor, "rejected_filtered", px, py, pz)
-                        elseif component and addHighlight(subsystem, actor, component, utils.getInteractiveComponent) then
-                            logItemState(actor, "accepted", px, py, pz)
-                            state.count = state.count + 1
+                        else
+                            local stencilUsage = config.STENCIL_USAGE
+                            if isStealingTarget(actor, pawn, targetKind) then
+                                stencilUsage = config.STEALING_STENCIL_USAGE
+                                state.stealingCount = state.stealingCount + 1
+                            end
+                            if component and addHighlight(
+                                subsystem,
+                                actor,
+                                component,
+                                utils.getInteractiveComponent,
+                                stencilUsage
+                            ) then
+                                logItemState(actor, "accepted", px, py, pz)
+                                state.count = state.count + 1
+                            end
                         end
                     elseif targetKind == "corpse" then
                         local lootable, component = isLootableCorpse(actor, pawn)
@@ -590,7 +717,18 @@ return function(config, utils, cache, chestMemory)
                     else
                         if isLikelyLootContainerType(actor) then
                             local component = utils.getInteractiveComponent(actor)
-                            if component and addHighlight(subsystem, actor, component, utils.getInteractiveComponent) then
+                            local stencilUsage = config.STENCIL_USAGE
+                            if isStealingTarget(actor, pawn, targetKind) then
+                                stencilUsage = config.STEALING_STENCIL_USAGE
+                                state.stealingCount = state.stealingCount + 1
+                            end
+                            if component and addHighlight(
+                                subsystem,
+                                actor,
+                                component,
+                                utils.getInteractiveComponent,
+                                stencilUsage
+                            ) then
                                 state.count = state.count + 1
                             end
                         end
@@ -655,6 +793,7 @@ return function(config, utils, cache, chestMemory)
             phase = "items",
             index = 0,
             count = 0,
+            stealingCount = 0,
             itemCandidates = nearbyTargets.items,
             corpseCandidates = nearbyTargets.corpses,
             chestCandidates = nearbyTargets.chests,
@@ -672,6 +811,7 @@ return function(config, utils, cache, chestMemory)
                 .. " item_candidates=" .. tostring(#state.itemCandidates)
                 .. " corpse_candidates=" .. tostring(#state.corpseCandidates)
                 .. " chest_candidates=" .. tostring(#state.chestCandidates)
+                .. " stealing_targets=" .. tostring(state.stealingCount)
             )
 
             ExecuteWithDelay(math.floor(config.DURATION * 1000), function()

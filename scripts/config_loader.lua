@@ -2,7 +2,8 @@ local DEFAULT_CONFIG = {
     highlight_key = "X",
     radius = 2500.0,
     duration = 8.0,
-    stencil_usage = 2,
+    use_stealing_outline = true,
+    stealing_outline_color = { 1.0, 0.2, 0.0 },
     use_thick_outline = true,
     highlight_corpses = true,
     highlight_chests = true,
@@ -78,7 +79,8 @@ local function cfgColor(name, fallback)
 end
 
 local highlightKeyName = cfgString("highlight_key")
-local outlineColor = cfgColor("outline_color", { 1.0, 0.85, 0.2 })
+local outlineColor = cfgColor("outline_color", { 1.0, 1.0, 1.0 })
+local stealingOutlineColor = cfgColor("stealing_outline_color", { 1.0, 0.2, 0.0 })
 
 return {
     ITEM_CLASS_PATH = "/Script/G1R.ItemVisualWorld",
@@ -88,7 +90,10 @@ return {
     HIGHLIGHT_KEY = Key[highlightKeyName] or Key[DEFAULT_CONFIG.highlight_key],
     RADIUS = cfgNumber("radius"),
     DURATION = cfgNumber("duration"),
-    STENCIL_USAGE = cfgNumber("stencil_usage"),
+    STENCIL_USAGE = 2,
+    USE_STEALING_OUTLINE = cfgBoolean("use_stealing_outline"),
+    STEALING_STENCIL_USAGE = 1,
+    STEALING_OUTLINE_COLOR = stealingOutlineColor,
     USE_THICK_OUTLINE = cfgBoolean("use_thick_outline"),
     HIGHLIGHT_CORPSES = cfgBoolean("highlight_corpses"),
     HIGHLIGHT_CHESTS = cfgBoolean("highlight_chests"),

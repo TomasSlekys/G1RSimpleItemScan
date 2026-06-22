@@ -1,5 +1,10 @@
 # Changelog
 
+## v1.0.14
+
+- Fixed outline thickness gradually increasing during normal play.
+- Added an optional red warning outline for items and chests owned by others.
+
 ## v1.0.13
 
 - Corrected the documented key name for numpad 0.
