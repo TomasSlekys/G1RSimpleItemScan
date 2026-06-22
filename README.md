@@ -35,10 +35,6 @@ Main features
   - outline color; default: white `1.0, 1.0, 1.0`
   - stealing warning outlines (`use_stealing_outline`); default: `enabled`
   - stealing warning color (`stealing_outline_color`); default: red-orange `{ 1.0, 0.2, 0.0 }`
-  - debug logging; default: `disabled`
-  - chest inventory diagnostics (`log_chest_state`); default: `disabled`
-  - corpse detection diagnostics (`log_corpse_state`); default: `disabled`
-  - item detection diagnostics (`log_item_state`); default: `disabled`
 
 Requirements
 
