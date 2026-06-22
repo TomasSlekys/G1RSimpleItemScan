@@ -217,7 +217,7 @@ return function(config, utils, cache, chestMemory)
         end
 
         local ok, relation = pcall(function()
-            if targetKind == "item" then
+            if targetKind == "item" or targetKind == "pouch" then
                 return ownership:GetOwnershipRelationOfItemInWorld(characterState, actor)
             end
             return ownership:GetOwnershipRelationOfInteractiveObjectInWorld(characterState, actor)
@@ -580,6 +580,22 @@ return function(config, utils, cache, chestMemory)
         return utils.getInteractiveComponent(actor) ~= nil
     end
 
+    local function getPickpocketPouchComponent(actor)
+        if not config.HIGHLIGHT_POUCHES or not utils.isValid(actor) then
+            return nil
+        end
+
+        local component = utils.getInteractiveComponent(actor)
+        if not utils.isValid(component) then
+            return nil
+        end
+        if utils.getProp(component, "m_ForceDisableInteraction") == true then
+            return nil
+        end
+
+        return component
+    end
+
     local function logItemState(actor, reason, px, py, pz)
         if not config.LOG_ITEM_STATE then
             return
@@ -701,6 +717,9 @@ return function(config, utils, cache, chestMemory)
             if state.phase == "items" then
                 list = state.itemCandidates
                 targetKind = "item"
+            elseif state.phase == "pouches" then
+                list = state.pouchCandidates
+                targetKind = "pouch"
             elseif state.phase == "corpses" then
                 list = state.corpseCandidates
                 targetKind = "corpse"
@@ -716,6 +735,8 @@ return function(config, utils, cache, chestMemory)
 
             if actor == nil then
                 if state.phase == "items" then
+                    state.phase = "pouches"
+                elseif state.phase == "pouches" then
                     state.phase = "corpses"
                 elseif state.phase == "corpses" then
                     state.phase = "chests"
@@ -748,6 +769,23 @@ return function(config, utils, cache, chestMemory)
                                 state.count = state.count + 1
                             end
                         end
+                    elseif targetKind == "pouch" then
+                        local component = getPickpocketPouchComponent(actor)
+                        local stencilUsage = config.STENCIL_USAGE
+                        if component and isStealingTarget(actor, pawn, targetKind) then
+                            stencilUsage = config.STEALING_STENCIL_USAGE
+                            state.stealingCount = state.stealingCount + 1
+                        end
+                        if component and addHighlight(
+                            subsystem,
+                            actor,
+                            component,
+                            utils.getInteractiveComponent,
+                            stencilUsage
+                        ) then
+                            state.count = state.count + 1
+                            state.pouchCount = state.pouchCount + 1
+                        end
                     elseif targetKind == "corpse" then
                         local lootable, component = isLootableCorpse(actor, pawn)
                         if lootable and addHighlight(subsystem, actor, component, resolveCorpseOutlineComponent) then
@@ -778,6 +816,8 @@ return function(config, utils, cache, chestMemory)
 
         if startingPhase == "items" then
             state.processedItems = state.index
+        elseif startingPhase == "pouches" then
+            state.processedPouches = state.index
         elseif startingPhase == "corpses" then
             state.processedCorpses = state.index
         elseif startingPhase == "chests" then
@@ -846,10 +886,13 @@ return function(config, utils, cache, chestMemory)
             index = 0,
             count = 0,
             stealingCount = 0,
+            pouchCount = 0,
             itemCandidates = nearbyTargets.items,
+            pouchCandidates = nearbyTargets.pouches,
             corpseCandidates = nearbyTargets.corpses,
             chestCandidates = nearbyTargets.chests,
             processedItems = 0,
+            processedPouches = 0,
             processedCorpses = 0,
             processedChests = 0,
             batchCount = 0,
@@ -862,6 +905,8 @@ return function(config, utils, cache, chestMemory)
                 "ScanTiming total=" .. tostring(elapsedMs(scanStartMs))
                 .. "ms batches=" .. tostring(state.batchCount)
                 .. " item_candidates=" .. tostring(#state.itemCandidates)
+                .. " pouch_candidates=" .. tostring(#state.pouchCandidates)
+                .. " pouches_highlighted=" .. tostring(state.pouchCount)
                 .. " corpse_candidates=" .. tostring(#state.corpseCandidates)
                 .. " chest_candidates=" .. tostring(#state.chestCandidates)
                 .. " stealing_targets=" .. tostring(state.stealingCount)

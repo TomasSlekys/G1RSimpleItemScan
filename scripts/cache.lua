@@ -229,16 +229,26 @@ return function(config, utils)
             end
         end
 
+        local pouches = {}
+        if config.HIGHLIGHT_POUCHES then
+            pouches = collectActors(subsystem, config.POUCH_CLASS_PATH, center, radius)
+            if pouches == nil then
+                return nil
+            end
+        end
+
         utils.debugLog(
             "Native nearby query: items=" .. tostring(#items)
             .. " corpses=" .. tostring(#corpses)
             .. " chests=" .. tostring(#chests)
+            .. " pouches=" .. tostring(#pouches)
         )
 
         return {
             items = items,
             corpses = corpses,
             chests = chests,
+            pouches = pouches,
         }
     end
 

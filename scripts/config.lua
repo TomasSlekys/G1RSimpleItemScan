@@ -29,6 +29,9 @@ return {
     -- When true, chests are included in scans.
     highlight_chests = true,
 
+    -- When true, NPC pickpocket pouch actors are included in scans.
+    highlight_pouches = true,
+
     -- Keeps outline settings refreshed automatically and records opened chests.
     -- Set to false to disable those automatic tasks. Nearby target discovery
     -- still happens only when the scan key is pressed.

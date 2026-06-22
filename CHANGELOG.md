@@ -5,6 +5,7 @@
 - Fixed outline thickness gradually increasing during normal play.
 - Added an optional red warning outline for items and chests owned by others.
 - Improved stability when pressing the scan key repeatedly in quick succession.
+- Added highlighting for NPC pickpocket pouches.
 
 ## v1.0.13
 
