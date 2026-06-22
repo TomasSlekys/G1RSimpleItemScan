@@ -4,7 +4,6 @@ return function(config, utils, cache, chestMemory)
     local highlighted = {}
     local highlightedByAddress = {}
     local cachedOutlineSubsystem = nil
-    local configuredOutlineConfigAddress = nil
     local baseClosestThickness = nil
     local baseFarthestThickness = nil
     local lastPawnAddress = nil
@@ -57,9 +56,6 @@ return function(config, utils, cache, chestMemory)
 
     local function resetOutlineCache()
         cachedOutlineSubsystem = nil
-        configuredOutlineConfigAddress = nil
-        baseClosestThickness = nil
-        baseFarthestThickness = nil
         lastOutlineWorldAddress = nil
     end
 
@@ -126,16 +122,16 @@ return function(config, utils, cache, chestMemory)
 
         local subsystemWorldAddress = getObjectWorldAddress(subsystem)
         if subsystemWorldAddress ~= nil and subsystemWorldAddress ~= lastOutlineWorldAddress then
-            configuredOutlineConfigAddress = nil
-            baseClosestThickness = nil
-            baseFarthestThickness = nil
             lastOutlineWorldAddress = subsystemWorldAddress
         end
 
-        local configAddress = utils.getAddress(configObject)
-        if configAddress ~= configuredOutlineConfigAddress then
-            configuredOutlineConfigAddress = configAddress
+        -- Unreal may replace the config UObject while retaining its current values.
+        -- Capture the unmodified baseline only once so replacement objects cannot
+        -- turn the multiplier into repeated exponential growth.
+        if type(baseClosestThickness) ~= "number" then
             baseClosestThickness = utils.getProp(configObject, "OutlineClosestThickness")
+        end
+        if type(baseFarthestThickness) ~= "number" then
             baseFarthestThickness = utils.getProp(configObject, "OutlineFarthestThickness")
         end
 
