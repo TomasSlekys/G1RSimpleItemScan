@@ -1,5 +1,9 @@
 # Changelog
 
+## v1.0.15
+
+- Fixed a runtime error while updating stencil outline colors when UE4SS supplies a function-valued map entry.
+
 ## v1.0.14
 
 - Fixed outline thickness gradually increasing during normal play.

@@ -400,6 +400,10 @@ return function(config, utils, cache)
                     value = valueProxy
                 end
 
+                if type(value) == "function" then
+                    return
+                end
+
                 local color = utils.getProp(value, "Color")
                 if color ~= nil then
                     currentFn(keyProxy, color, value)
