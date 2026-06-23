@@ -12,6 +12,13 @@ Installation instructions
 4. Enable `Accessibility > Object Outliner` in the game's settings.
 5. Edit `Scripts/config.lua` if you want to change the scan key, radius, duration, or outline settings.
 
+Optional in-game settings menu
+
+- Install SharedModMenu alongside this mod to edit scan, filter, outline, stealing-warning, and debug settings in game.
+- Open SharedModMenu with its configured key (`F2` by default), then select the `Simple Item Scan` tab.
+- Changes are saved to `Scripts/config.lua`; scan/filter changes apply on the next scan and visual tuning refreshes immediately.
+- SharedModMenu is optional. SimpleItemScan starts and scans normally when it is not installed.
+
 Main features
 
 - Press the configured scan key ("X" by default) to highlight nearby world items, corpses, chests, and pickpocket pouches in a configurable radius (25m by default) around the player.
@@ -41,3 +48,4 @@ Requirements
 - Gothic 1 Remake
 - UE4SS or the Lua mod loading setup you are already using for Gothic 1 Remake mods
 - The game's own item highlight / outline system should be available and enabled, because this mod feeds targets into the existing outline subsystem rather than drawing its own markers
+- SharedModMenu is optional and is only required for the in-game settings interface

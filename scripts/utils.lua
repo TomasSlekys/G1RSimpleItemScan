@@ -1,14 +1,19 @@
 return function(modName, debugMode)
     local M = {}
+    local debugEnabled = debugMode == true
 
     function M.log(msg)
         print("[" .. modName .. "] " .. msg .. "\n")
     end
 
     function M.debugLog(msg)
-        if debugMode then
+        if debugEnabled then
             M.log(msg)
         end
+    end
+
+    function M.setDebugMode(enabled)
+        debugEnabled = enabled == true
     end
 
     function M.isValid(obj)

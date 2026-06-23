@@ -20,6 +20,15 @@ local utils = dofile(SCRIPT_ROOT .. "utils.lua")(MOD_NAME, config.DEBUG_MODE)
 local cache = dofile(SCRIPT_ROOT .. "cache.lua")(config, utils)
 local scanner = dofile(SCRIPT_ROOT .. "scanner.lua")(config, utils, cache)
 
+-- The bridge only publishes settings through UE4SS shared variables. If
+-- SharedModMenu is not installed, SimpleItemScan continues normally.
+local menuLoaded, menuError = pcall(function()
+    dofile(SCRIPT_ROOT .. "menu.lua")(SCRIPT_ROOT, config, scanner, utils)
+end)
+if not menuLoaded then
+    utils.log("Optional SharedModMenu integration failed: " .. tostring(menuError))
+end
+
 utils.log("Loaded. Press " .. config.HIGHLIGHT_KEY_NAME .. " to temporarily highlight nearby items and lootable corpses.")
 utils.debugLog("Debug mode enabled")
 

@@ -3,6 +3,7 @@
 ## v1.0.15
 
 - Fixed a runtime error while updating stencil outline colors when UE4SS supplies a function-valued map entry.
+- Added optional SharedModMenu integration for changing scan, filter, outline, stealing-warning, and debug settings in game.
 
 ## v1.0.14
 
