@@ -4,6 +4,8 @@
 
 - Fixed a runtime error while updating stencil outline colors when UE4SS supplies a function-valued map entry.
 - Added optional SharedModMenu integration for changing scan, filter, outline, stealing-warning, and debug settings in game.
+- Added live inventory filtering so corpses with no remaining items can be skipped, plus an optional experimental data-driven hunting-skill filter and diagnostic logging for building its item map.
+- Stored auto-discovered hunting loot mappings in a separate update-safe user file and added support for ignoring persistent internal corpse entries such as `LurkerTail`.
 
 ## v1.0.14
 

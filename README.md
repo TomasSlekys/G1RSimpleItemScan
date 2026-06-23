@@ -24,6 +24,8 @@ Main features
 - Press the configured scan key ("X" by default) to highlight nearby world items, corpses, chests, and pickpocket pouches in a configurable radius (25m by default) around the player.
 - Scan radius and highlight duration are configurable in `Scripts/config.lua`.
 - Repeated scans refresh the timer on already highlighted targets instead of clearing them immediately.
+- Corpses with a confirmed empty live inventory can be skipped automatically.
+- Optional hunting-skill filtering can treat mapped, skill-locked trophies as inaccessible loot.
 - Chests with a confirmed empty live inventory can be skipped automatically.
 - Outline visibility can be tuned through config options such as thickness, opacity, and color.
 - Items and chests owned by someone else can use a separate red warning outline.
@@ -33,6 +35,8 @@ Main features
   - highlight duration; default: `8 seconds`
   - whether thick outlines are used; default: `enabled`
   - whether corpses are included; default: `enabled`
+  - whether confirmed empty corpses are skipped (`skip_empty_corpses`); default: `enabled`
+  - experimental: whether mapped hunting trophies require the hero's corresponding learned skill (`respect_hunting_skills`); default: `disabled`
   - whether chests are included; default: `enabled`
   - whether NPC pickpocket pouches are included; default: `enabled`
   - whether outline settings refresh automatically; default: `enabled`
@@ -49,3 +53,14 @@ Requirements
 - UE4SS or the Lua mod loading setup you are already using for Gothic 1 Remake mods
 - The game's own item highlight / outline system should be available and enabled, because this mod feeds targets into the existing outline subsystem rather than drawing its own markers
 - SharedModMenu is optional and is only required for the in-game settings interface
+
+Hunting loot map
+
+`Scripts/hunting_loot_map.lua` contains the mappings shipped with the mod and the reference `known_skills` list. When an `ItAt_*` animal-trophy definition is encountered, the mod creates or updates `Scripts/hunting_loot_discovered.lua` with a deduplicated placeholder whose `skill` is `nil`. The generated file is separate and excluded from the repository, so updating the mod does not overwrite discovered items or user assignments. Fill in a skill from the built-in map's `known_skills` table. Persistent internal corpse entries that are not collectible can use `ignore = true`. Unassigned, unmapped, and unavailable skill checks are treated as lootable, so an incomplete map cannot incorrectly hide a corpse.
+
+Enable `log_corpse_state` (or `Log Corpse State` on the menu's Debug page) and perform a scan to log:
+
+- every known hunting skill as `learned`, `not_learned`, or `unknown`
+- every corpse item definition and whether its configured skill requirement is `unlocked`, `locked`, `unknown`, or `not_mapped`
+
+Assign skills to the generated entries in `hunting_loot_discovered.lua`, reload the mod, then enable `Hunting Skills` on the menu's Experimental page. Auto-discovered placeholders include the exact `as_class` value observed in-game to make the item definition easy to identify.

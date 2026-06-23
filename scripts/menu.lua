@@ -101,6 +101,7 @@ return function(scriptRoot, config, scanner, utils)
             numberItem("Radius", "RADIUS", "radius", 500, 10000, 250, "%.0f", false),
             numberItem("Duration", "DURATION", "duration", 1, 60, 1, "%.1f", false),
             boolItem("Highlight Corpses", "HIGHLIGHT_CORPSES", "highlight_corpses"),
+            boolItem("Skip Empty Corpses", "SKIP_EMPTY_CORPSES", "skip_empty_corpses"),
             boolItem("Highlight Chests", "HIGHLIGHT_CHESTS", "highlight_chests"),
             boolItem("Skip Empty Chests", "SKIP_EMPTY_CHESTS", "skip_empty_chests"),
             boolItem("Highlight Pouches", "HIGHLIGHT_POUCHES", "highlight_pouches"),
@@ -118,6 +119,9 @@ return function(scriptRoot, config, scanner, utils)
             colorItem("Warning R", "STEALING_OUTLINE_COLOR", "stealing_outline_color", 1),
             colorItem("Warning G", "STEALING_OUTLINE_COLOR", "stealing_outline_color", 2),
             colorItem("Warning B", "STEALING_OUTLINE_COLOR", "stealing_outline_color", 3),
+        } },
+        { title = "Experimental", items = {
+            boolItem("Hunting Skills", "RESPECT_HUNTING_SKILLS", "respect_hunting_skills"),
         } },
         { title = "Debug", items = {
             boolItem("Debug Mode", "DEBUG_MODE", "debug_mode", function(value)

@@ -7,6 +7,7 @@ return function(config, utils, cache)
     local cachedOwnershipSubsystem = nil
     local cachedDefaultOutlineConfig = nil
     local cachedDataModuleLibrary = nil
+    local cachedGothicGASLibrary = nil
     local baseClosestThickness = nil
     local baseFarthestThickness = nil
     local lastPawnAddress = nil
@@ -19,6 +20,7 @@ return function(config, utils, cache)
     local stealingByAddress = {}
     local chestStateLogged = {}
     local itemStateLogged = {}
+    local huntingSkillEffectClasses = {}
     local scanBatchSize = 16
     local chestKeywords = {
         "chest", "box", "barrel", "basket", "container", "safe", "crate",
@@ -218,35 +220,351 @@ return function(config, utils, cache)
         end)
     end
 
-    local function getContainerLootCount(actor)
+    local function getItemASClass(definition)
+        local ok, fullName = pcall(function()
+            return definition:GetFullName()
+        end)
+        if ok and fullName ~= nil then return tostring(fullName) end
+        return nil
+    end
+
+    local function getItemIdentity(definition)
+        local parts = {}
+        local uniqueName = utils.getProp(definition, "m_UniqueName")
+        if uniqueName ~= nil then parts[#parts + 1] = tostring(uniqueName) end
+        local asClass = getItemASClass(definition)
+        if asClass ~= nil then parts[#parts + 1] = asClass end
+        return table.concat(parts, " | ")
+    end
+
+    local function getItemDefinitionName(definition)
+        local identity = getItemIdentity(definition)
+        return identity:match("/Script/Angelscript%.([%w_]+)")
+            or identity:match("^([%w_]+)$")
+    end
+
+    local function addDiscoveredHuntingItem(definition)
+        local itemName = getItemDefinitionName(definition)
+        if type(itemName) ~= "string" or not itemName:match("^ItAt_") then return false end
+        local asClass = getItemASClass(definition)
+
+        local map = config.HUNTING_LOOT_MAP
+        local entries = type(map) == "table" and map.items or nil
+        if type(entries) ~= "table" then return false end
+        local itemNameLower = string.lower(itemName)
+        for _, entry in ipairs(entries) do
+            if type(entry) == "table"
+                and type(entry.pattern) == "string"
+                and string.lower(entry.pattern) == itemNameLower then
+                return false
+            end
+        end
+
+        local path = config.HUNTING_LOOT_DISCOVERY_PATH
+        if type(path) ~= "string" then return false end
+        local input = io.open(path, "r")
+        local content
+        if input ~= nil then
+            content = input:read("*a")
+            input:close()
+        else
+            content = table.concat({
+                "-- User-editable hunting loot mappings discovered at runtime.",
+                "-- This file is generated separately so mod updates do not overwrite it.",
+                "-- Set skill to a value from hunting_loot_map.lua, or false for skill-free loot.",
+                "",
+                "return {",
+                "    items = {",
+                "        -- AUTO-DISCOVERED ITEMS END",
+                "    },",
+                "}",
+                "",
+            }, "\n")
+        end
+
+        local marker = "        -- AUTO-DISCOVERED ITEMS END"
+        local startIndex = content:find(marker, 1, true)
+        if startIndex == nil then return false end
+        local asClassLine = asClass ~= nil
+            and ("            as_class = " .. string.format("%q", asClass) .. ",")
+            or "            -- as_class was unavailable when discovered"
+        local record = table.concat({
+            "        {",
+            "            pattern = \"" .. itemName .. "\",",
+            asClassLine,
+            "            skill = nil, -- assign a known skill from hunting_loot_map.lua",
+            "        },",
+            "",
+        }, "\n")
+        local updated = content:sub(1, startIndex - 1) .. record .. content:sub(startIndex)
+        local output = io.open(path, "w")
+        if output == nil then return false end
+        output:write(updated)
+        output:close()
+
+        entries[#entries + 1] = { pattern = itemName, as_class = asClass, skill = nil }
+        utils.log(
+            "Added hunting loot mapping placeholder to hunting_loot_discovered.lua for " .. itemName
+            .. " as_class=" .. tostring(asClass or "unavailable")
+        )
+        return true
+    end
+
+    local function findHuntingRequirement(definition)
+        local map = config.HUNTING_LOOT_MAP
+        local entries = type(map) == "table" and map.items or nil
+        if type(entries) ~= "table" then return nil end
+
+        local identity = string.lower(getItemIdentity(definition))
+        for _, entry in ipairs(entries) do
+            local pattern = type(entry) == "table" and entry.pattern or nil
+            if type(pattern) == "string"
+                and pattern ~= ""
+                and string.find(identity, string.lower(pattern), 1, true) then
+                return entry
+            end
+        end
+        return nil
+    end
+
+    local function getPlayerAbilitySystem(pawn)
+        if not utils.isValid(pawn) then return nil end
+        local ok, abilitySystem = pcall(function()
+            return pawn:GetAbilitySystemComponent()
+        end)
+        if ok and utils.isValid(abilitySystem) then return abilitySystem end
+
+        local characterState = utils.getProp(pawn, "m_CharacterState")
+        abilitySystem = utils.getProp(characterState, "AbilitySystemComponent")
+        if utils.isValid(abilitySystem) then return abilitySystem end
+        return nil
+    end
+
+    local function getGothicGASLibrary()
+        if utils.isValid(cachedGothicGASLibrary) then return cachedGothicGASLibrary end
+        local ok, library = pcall(function()
+            return StaticFindObject("/Script/G1R.Default__GothicGASLibrary")
+        end)
+        if ok and utils.isValid(library) then
+            cachedGothicGASLibrary = library
+            return library
+        end
+        return nil
+    end
+
+    local function getGrantedSkillTags(defaultObject, skillName)
+        local tagComponent = nil
+        local components = utils.getProp(defaultObject, "GEComponents")
+        forEachCollection(components, function(component)
+            if tagComponent == nil
+                and utils.getProp(component, "InheritableGrantedTagsContainer") ~= nil then
+                tagComponent = component
+            end
+        end)
+        if tagComponent == nil then
+            pcall(function()
+                tagComponent = StaticFindObject(
+                    "/Script/Angelscript.Default__" .. skillName .. ":TagComponent"
+                )
+            end)
+        end
+        if not utils.isValid(tagComponent) then return nil, "tag_component_unavailable" end
+
+        local inherited = utils.getProp(tagComponent, "InheritableGrantedTagsContainer")
+        local tags = {}
+        local function appendTags(container)
+            local gameplayTags = utils.getProp(container, "GameplayTags")
+            if gameplayTags == nil then return false end
+            return forEachCollection(gameplayTags, function(tag)
+                tags[#tags + 1] = tag
+            end)
+        end
+        local readable = appendTags(utils.getProp(inherited, "CombinedTags"))
+        if #tags == 0 then
+            readable = appendTags(utils.getProp(inherited, "Added")) or readable
+        end
+        if not readable then return nil, "granted_tags_unreadable" end
+        if #tags == 0 then return nil, "granted_tags_empty" end
+        return tags, "granted_tags=" .. tostring(#tags)
+    end
+
+    local function hasHuntingSkill(abilitySystem, skillName)
+        if not utils.isValid(abilitySystem) or type(skillName) ~= "string" or skillName == "" then
+            return nil, "ability_system_unavailable"
+        end
+
+        local cached = huntingSkillEffectClasses[skillName]
+        if cached == nil then
+            local effectClass = nil
+            local defaultObject = nil
+            local reason = "class_not_found"
+            local okClass, foundClass = pcall(function()
+                return StaticFindObject("/Script/Angelscript." .. skillName)
+            end)
+            if okClass and utils.isValid(foundClass) then
+                effectClass = foundClass
+                reason = "class_path"
+            end
+
+            -- Read granted tags from the effect default. This avoids
+            -- GetGameplayEffectCount, whose UE4SS binding can touch invalid
+            -- internal active-effect arrays in this game build.
+            local okDefault, foundDefault = pcall(function()
+                return StaticFindObject("/Script/Angelscript.Default__" .. skillName)
+            end)
+            if okDefault and utils.isValid(foundDefault) then
+                defaultObject = foundDefault
+                if effectClass == nil then
+                    local okGetClass, recoveredClass = pcall(function()
+                        return foundDefault:GetClass()
+                    end)
+                    if okGetClass and utils.isValid(recoveredClass) then
+                        effectClass = recoveredClass
+                        reason = "default_object_class"
+                    else
+                        reason = "default_get_class_failed:" .. tostring(recoveredClass)
+                    end
+                end
+            elseif not okClass then
+                reason = "class_lookup_failed:" .. tostring(foundClass)
+            elseif not okDefault then
+                reason = "default_lookup_failed:" .. tostring(foundDefault)
+            end
+            cached = {
+                effect_class = effectClass,
+                default_object = defaultObject,
+                reason = reason,
+            }
+            huntingSkillEffectClasses[skillName] = cached
+        end
+
+        if not utils.isValid(cached.default_object) then
+            return nil, cached.reason .. ":default_unavailable"
+        end
+
+        local tags, tagReason = getGrantedSkillTags(cached.default_object, skillName)
+        if tags == nil then return nil, cached.reason .. ":" .. tagReason end
+        local library = getGothicGASLibrary()
+        if not utils.isValid(library) then return nil, "gas_library_unavailable" end
+
+        local resolved = false
+        local tagNames = {}
+        for _, tag in ipairs(tags) do
+            tagNames[#tagNames + 1] = tostring(utils.getProp(tag, "TagName") or tag)
+            local ok, hasTag = pcall(function()
+                return library:HasTag(abilitySystem, tag, true)
+            end)
+            if ok and type(hasTag) == "boolean" then
+                resolved = true
+                if hasTag then
+                    return true, tagReason .. ":tag=" .. table.concat(tagNames, ",")
+                end
+            end
+        end
+        if resolved then
+            return false, tagReason .. ":tags=" .. table.concat(tagNames, ",")
+        end
+        return nil, "tag_probe_failed:tags=" .. table.concat(tagNames, ",")
+    end
+
+    local function requirementIsMet(abilitySystem, requirement)
+        local skills = requirement.skills
+        if type(skills) ~= "table" then skills = { requirement.skill } end
+
+        local resolved = false
+        for _, skillName in ipairs(skills) do
+            local hasSkill = hasHuntingSkill(abilitySystem, skillName)
+            if hasSkill == true then return true end
+            if hasSkill ~= nil then resolved = true end
+        end
+        if resolved then return false end
+        return nil
+    end
+
+    local function getInventoryType(value)
+        value = unwrapValue(value)
+        if type(value) == "number" then return value end
+        local text = tostring(value)
+        local numeric = tonumber(text)
+        if numeric ~= nil then return numeric end
+        if string.find(text, "MainContainer", 1, true) then return 1 end
+        return nil
+    end
+
+    local function getContainerLootState(actor, pawn, respectHuntingSkills)
         local library = getDataModuleLibrary()
         if not utils.isValid(library) then
-            return nil, "library_unavailable"
+            return nil, nil, "library_unavailable", nil
         end
 
         local ok, container = pcall(function()
             return library:GetContainerDataModule(actor)
         end)
         if not ok or not utils.isValid(container) then
-            return nil, "container_module_unavailable"
+            return nil, nil, "container_module_unavailable", nil
         end
 
         local inventory = unwrapValue(utils.getProp(container, "m_Inventory"))
         local values = unwrapValue(utils.getProp(inventory, "m_Values"))
         local inventoryEntries = utils.getProp(values, "Items")
         if inventoryEntries == nil then
-            return nil, "inventory_entries_unavailable"
+            return nil, nil, "inventory_entries_unavailable", nil
         end
 
         local total = 0
+        local accessible = 0
+        local details = {}
+        local abilitySystem = respectHuntingSkills and getPlayerAbilitySystem(pawn) or nil
         local readable = forEachCollection(inventoryEntries, function(entry)
+            local inventoryType = getInventoryType(utils.getProp(entry, "m_InventoryType"))
             local slots = utils.getProp(entry, "m_Slots")
             local slotsReadable = forEachCollection(slots, function(item)
                 local slotData = unwrapValue(utils.getProp(item, "m_SlotData"))
                 local definition = utils.getProp(slotData, "m_ItemDefinition")
                 local count = utils.getProp(slotData, "m_ItemCount")
-                if utils.isValid(definition) and type(count) == "number" and count > 0 then
+                local itemInventoryType = getInventoryType(utils.getProp(item, "m_InventoryType"))
+                    or inventoryType
+                -- Only MainContainer is presented as carried loot. Equipped
+                -- weapons, armor, rings, and quick slots remain on the actor
+                -- after looting and must not keep the corpse highlighted.
+                local isLootInventory = itemInventoryType == nil or itemInventoryType == 1
+                if isLootInventory
+                    and utils.isValid(definition)
+                    and type(count) == "number"
+                    and count > 0 then
+                    addDiscoveredHuntingItem(definition)
                     total = total + 1
+                    local accessibleItem = true
+                    local requirement = nil
+                    local skillState = "not_mapped"
+                    if respectHuntingSkills then
+                        requirement = findHuntingRequirement(definition)
+                        if requirement ~= nil then
+                            local requiresNoSkill = requirement.skill == false
+                            local hasAssignedSkill = type(requirement.skill) == "string"
+                                or (type(requirement.skills) == "table" and #requirement.skills > 0)
+                            if requirement.ignore == true then
+                                accessibleItem = false
+                                skillState = "ignored"
+                            elseif requiresNoSkill then
+                                skillState = "free"
+                            elseif hasAssignedSkill then
+                                local met = requirementIsMet(abilitySystem, requirement)
+                                if met == false then accessibleItem = false end
+                                skillState = met == true and "unlocked"
+                                    or (met == false and "locked" or "unknown")
+                            else
+                                skillState = "unassigned"
+                            end
+                        end
+                    end
+                    if accessibleItem then accessible = accessible + 1 end
+                    details[#details + 1] = {
+                        identity = getItemIdentity(definition),
+                        count = count,
+                        inventory_type = itemInventoryType,
+                        skill_state = skillState,
+                    }
                 end
             end)
             if not slotsReadable then
@@ -254,10 +572,34 @@ return function(config, utils, cache)
             end
         end)
         if not readable then
-            return nil, "inventory_slots_unavailable"
+            return nil, nil, "inventory_slots_unavailable", nil
         end
 
-        return total, "live_inventory"
+        return total, accessible, "live_inventory", details
+    end
+
+    local function getContainerLootCount(actor)
+        local total, _, source = getContainerLootState(actor, nil, false)
+        return total, source
+    end
+
+    local function logHuntingSkillState(pawn)
+        if not config.LOG_CORPSE_STATE then return end
+        local map = config.HUNTING_LOOT_MAP
+        local skills = type(map) == "table" and map.known_skills or nil
+        if type(skills) ~= "table" then return end
+
+        local abilitySystem = getPlayerAbilitySystem(pawn)
+        for _, skillName in ipairs(skills) do
+            local learned, reason = hasHuntingSkill(abilitySystem, skillName)
+            local state = learned == true and "learned"
+                or (learned == false and "not_learned" or "unknown")
+            utils.log(
+                "HuntingSkill " .. tostring(skillName)
+                .. " state=" .. state
+                .. " probe=" .. tostring(reason)
+            )
+        end
     end
 
     local function unwrapEnumValue(value)
@@ -501,6 +843,35 @@ return function(config, utils, cache)
 
         if utils.getProp(component, "m_CanBeUsed") == false then
             return false, nil
+        end
+
+        if config.SKIP_EMPTY_CORPSES then
+            local totalCount, accessibleCount, source, details = getContainerLootState(
+                actor,
+                pawn,
+                config.RESPECT_HUNTING_SKILLS
+            )
+            local itemCount = config.RESPECT_HUNTING_SKILLS and accessibleCount or totalCount
+            utils.debugLog(
+                "CorpseInventory " .. tostring(utils.getAddress(actor) or "unknown")
+                .. " total=" .. tostring(totalCount)
+                .. " accessible=" .. tostring(accessibleCount)
+                .. " effective=" .. tostring(itemCount)
+                .. " source=" .. tostring(source)
+            )
+            if config.LOG_CORPSE_STATE then
+                for _, detail in ipairs(details or {}) do
+                    utils.log(
+                        "CorpseItem count=" .. tostring(detail.count)
+                        .. " inventory_type=" .. tostring(detail.inventory_type)
+                        .. " skill_state=" .. tostring(detail.skill_state)
+                        .. " | " .. tostring(detail.identity)
+                    )
+                end
+            end
+            if itemCount == 0 then
+                return false, nil
+            end
         end
 
         local mesh = utils.getProp(actor, "Mesh")
@@ -967,6 +1338,7 @@ return function(config, utils, cache)
         end
 
         checkWorldReload(pawn)
+        logHuntingSkillState(pawn)
         local subsystem = getOutlineSubsystem(pawn)
 
         if not utils.isValid(subsystem) then

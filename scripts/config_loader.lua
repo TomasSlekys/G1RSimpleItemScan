@@ -6,6 +6,8 @@ local DEFAULT_CONFIG = {
     stealing_outline_color = { 1.0, 0.2, 0.0 },
     use_thick_outline = true,
     highlight_corpses = true,
+    skip_empty_corpses = true,
+    respect_hunting_skills = false,
     highlight_chests = true,
     skip_empty_chests = true,
     highlight_pouches = true,
@@ -33,6 +35,25 @@ local function scriptRoot()
 end
 
 local SCRIPT_ROOT = scriptRoot()
+local HUNTING_LOOT_DISCOVERY_PATH = SCRIPT_ROOT .. "hunting_loot_discovered.lua"
+
+local huntingLootMap = { items = {} }
+pcall(function()
+    local loaded = dofile(SCRIPT_ROOT .. "hunting_loot_map.lua")
+    if type(loaded) == "table" then
+        huntingLootMap = loaded
+    end
+end)
+
+pcall(function()
+    local discovered = dofile(HUNTING_LOOT_DISCOVERY_PATH)
+    local discoveredItems = type(discovered) == "table" and discovered.items or nil
+    if type(discoveredItems) ~= "table" then return end
+    if type(huntingLootMap.items) ~= "table" then huntingLootMap.items = {} end
+    for _, entry in ipairs(discoveredItems) do
+        huntingLootMap.items[#huntingLootMap.items + 1] = entry
+    end
+end)
 
 local localConfig = {}
 pcall(function()
@@ -97,6 +118,10 @@ return {
     STEALING_OUTLINE_COLOR = stealingOutlineColor,
     USE_THICK_OUTLINE = cfgBoolean("use_thick_outline"),
     HIGHLIGHT_CORPSES = cfgBoolean("highlight_corpses"),
+    SKIP_EMPTY_CORPSES = cfgBoolean("skip_empty_corpses"),
+    RESPECT_HUNTING_SKILLS = cfgBoolean("respect_hunting_skills"),
+    HUNTING_LOOT_MAP = huntingLootMap,
+    HUNTING_LOOT_DISCOVERY_PATH = HUNTING_LOOT_DISCOVERY_PATH,
     HIGHLIGHT_CHESTS = cfgBoolean("highlight_chests"),
     SKIP_EMPTY_CHESTS = cfgBoolean("skip_empty_chests"),
     HIGHLIGHT_POUCHES = cfgBoolean("highlight_pouches"),

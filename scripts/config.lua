@@ -26,6 +26,10 @@ return {
     -- When false, the mod only highlights world items.
     highlight_corpses = true,
 
+    -- When true, corpses with a confirmed empty live inventory are skipped.
+    -- Corpses whose inventory is not loaded yet remain visible.
+    skip_empty_corpses = true,
+
     -- When true, chests are included in scans.
     highlight_chests = true,
 
@@ -59,6 +63,12 @@ return {
     debug_mode = false,
 
     -- EXPERIMENTAL
+
+    -- When true, mapped hunting trophies only count as loot when the hero has
+    -- the required skill effect. Built-in mappings are in hunting_loot_map.lua;
+    -- new discoveries and user assignments are kept in hunting_loot_discovered.lua.
+    -- Unmapped items and unavailable skill state are treated as lootable.
+    respect_hunting_skills = false,
 
     -- Logs extra chest/container state details to the UE4SS log.
     -- Useful for comparing full vs empty chests while testing.
