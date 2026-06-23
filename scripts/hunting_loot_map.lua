@@ -40,10 +40,7 @@ return {
         {
             pattern = "ItAt_Crawler_01",
             label = "Mandibles of a Crawler",
-            skills = {
-                "GE_Skill_Hunting_MandibleMineCrawler_Trained",
-                "GE_Skill_Hunting_Secretion_Trained",
-            },
+            skill = "GE_Skill_Hunting_MandibleMineCrawler_Trained",
         },
         {
             pattern = "ItAt_Crawler_02",
@@ -71,7 +68,14 @@ return {
             skill = "GE_Skill_Hunting_Reptiles_Trained",
         },
         {
+            pattern = "ItAt_Lurker_03",
+            as_class = "ASClass /Script/Angelscript.ItAt_Lurker_03",
+            label = "Lurker Skin",
+            skill = "GE_Skill_Hunting_Reptiles_Trained",
+        },
+        {
             pattern = "LurkerTail",
+            as_class = "ASClass /Script/Angelscript.LurkerTail",
             label = "Lurker Tail (internal)",
             ignore = true,
         },
