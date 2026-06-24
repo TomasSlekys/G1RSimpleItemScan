@@ -2,6 +2,9 @@
 
 ## v1.0.15
 
+- Fixed corpse outline registration to use the required interactive component and honor failed registrations.
+- Reduced unsafe repeated UE4SS object and hunting-skill diagnostic probes during corpse scans.
+- Counted lootable corpse weapon slots, ignored internal swimming and water-walking fist entries, and applied ignore mappings independently of the experimental hunting-skill filter.
 - Fixed a runtime error while updating stencil outline colors when UE4SS supplies a function-valued map entry.
 - Added optional SharedModMenu integration for changing scan, filter, outline, stealing-warning, and debug settings in game.
 - Added live inventory filtering so corpses with no remaining items can be skipped, plus an optional experimental data-driven hunting-skill filter and diagnostic logging for building its item map.

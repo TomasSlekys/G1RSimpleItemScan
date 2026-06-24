@@ -11,7 +11,8 @@
 -- An item may accept any one of several effects:
 -- { pattern = "EXAMPLE", skills = { "GE_Skill_One", "GE_Skill_Two" } },
 -- Use skill = false for verified items that need no hunting skill.
--- Use ignore = true for internal corpse inventory entries that are not loot.
+-- Use ignore = true for internal corpse inventory entries that are not loot;
+-- ignores apply regardless of the respect_hunting_skills setting.
 -- Runtime discoveries are stored in hunting_loot_discovered.lua so updates
 -- can replace this built-in map without overwriting user assignments.
 
@@ -77,6 +78,18 @@ return {
             pattern = "LurkerTail",
             as_class = "ASClass /Script/Angelscript.LurkerTail",
             label = "Lurker Tail (internal)",
+            ignore = true,
+        },
+        {
+            pattern = "HumanFist_NoWeapon_Swimming",
+            as_class = "ASClass /Script/Angelscript.HumanFist_NoWeapon_Swimming",
+            label = "Swimming fist (internal)",
+            ignore = true,
+        },
+        {
+            pattern = "HumanFist_NoWeapon_WaterWalking",
+            as_class = "ASClass /Script/Angelscript.HumanFist_NoWeapon_WaterWalking",
+            label = "Water-walking fist (internal)",
             ignore = true,
         },
         {

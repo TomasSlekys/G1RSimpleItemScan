@@ -56,11 +56,21 @@ Requirements
 
 Hunting loot map
 
-`Scripts/hunting_loot_map.lua` contains the mappings shipped with the mod and the reference `known_skills` list. When an `ItAt_*` animal-trophy definition is encountered, the mod creates or updates `Scripts/hunting_loot_discovered.lua` with a deduplicated placeholder whose `skill` is `nil`. The generated file is separate and excluded from the repository, so updating the mod does not overwrite discovered items or user assignments. Fill in a skill from the built-in map's `known_skills` table. Persistent internal corpse entries that are not collectible can use `ignore = true`. Unassigned, unmapped, and unavailable skill checks are treated as lootable, so an incomplete map cannot incorrectly hide a corpse.
+`Scripts/hunting_loot_map.lua` contains the mappings shipped with the mod and the reference `known_skills` list. When an `ItAt_*` animal-trophy definition is encountered, the mod creates or updates `Scripts/hunting_loot_discovered.lua` with a deduplicated placeholder whose `skill` is `nil`. The generated file is separate and excluded from the repository, so updating the mod does not overwrite discovered items or user assignments. Fill in a skill from the built-in map's `known_skills` table. Unassigned, unmapped, and unavailable skill checks are treated as lootable, so an incomplete map cannot incorrectly hide a corpse.
+
+To ignore another persistent internal corpse entry yourself, add an item before the `AUTO-DISCOVERED ITEMS END` line in `Scripts/hunting_loot_discovered.lua`:
+
+```lua
+        {
+            pattern = "ExactClassNameFromTheCorpseItemLog",
+            ignore = true,
+        },
+```
+
+`pattern` is a case-insensitive plain substring matched against the logged item identity, so copy the distinctive class name after `/Script/Angelscript.` (for example, `HumanFist_NoWeapon_Swimming`). Use a specific name to avoid suppressing unrelated items. Save the file and reload the mod or restart the game. Ignore entries apply even when the experimental `Hunting Skills` option is disabled.
 
 Enable `log_corpse_state` (or `Log Corpse State` on the menu's Debug page) and perform a scan to log:
 
-- every known hunting skill as `learned`, `not_learned`, or `unknown`
-- every corpse item definition and whether its configured skill requirement is `unlocked`, `locked`, `unknown`, or `not_mapped`
+- every corpse item definition and whether its configured state is `ignored`, `unlocked`, `locked`, `unknown`, or `not_mapped`
 
 Assign skills to the generated entries in `hunting_loot_discovered.lua`, reload the mod, then enable `Hunting Skills` on the menu's Experimental page. Auto-discovered placeholders include the exact `as_class` value observed in-game to make the item definition easy to identify.

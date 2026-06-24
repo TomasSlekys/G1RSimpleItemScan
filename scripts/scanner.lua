@@ -21,6 +21,7 @@ return function(config, utils, cache)
     local chestStateLogged = {}
     local itemStateLogged = {}
     local huntingSkillEffectClasses = {}
+    local huntingDefinitionObjects = {}
     local scanBatchSize = 16
     local chestKeywords = {
         "chest", "box", "barrel", "basket", "container", "safe", "crate",
@@ -237,16 +238,15 @@ return function(config, utils, cache)
         return table.concat(parts, " | ")
     end
 
-    local function getItemDefinitionName(definition)
-        local identity = getItemIdentity(definition)
+    local function getItemDefinitionName(identity)
         return identity:match("/Script/Angelscript%.([%w_]+)")
             or identity:match("^([%w_]+)$")
     end
 
-    local function addDiscoveredHuntingItem(definition)
-        local itemName = getItemDefinitionName(definition)
+    local function addDiscoveredHuntingItem(identity)
+        local itemName = getItemDefinitionName(identity)
         if type(itemName) ~= "string" or not itemName:match("^ItAt_") then return false end
-        local asClass = getItemASClass(definition)
+        local asClass = identity:match("(ASClass /Script/Angelscript%.[%w_]+)")
 
         local map = config.HUNTING_LOOT_MAP
         local entries = type(map) == "table" and map.items or nil
@@ -272,6 +272,7 @@ return function(config, utils, cache)
                 "-- User-editable hunting loot mappings discovered at runtime.",
                 "-- This file is generated separately so mod updates do not overwrite it.",
                 "-- Set skill to a value from hunting_loot_map.lua, or false for skill-free loot.",
+                "-- Set ignore = true for an internal corpse entry that is not collectible loot.",
                 "",
                 "return {",
                 "    items = {",
@@ -310,12 +311,12 @@ return function(config, utils, cache)
         return true
     end
 
-    local function findHuntingRequirement(definition)
+    local function findHuntingRequirement(identity)
         local map = config.HUNTING_LOOT_MAP
         local entries = type(map) == "table" and map.items or nil
         if type(entries) ~= "table" then return nil end
 
-        local identity = string.lower(getItemIdentity(definition))
+        identity = string.lower(identity)
         for _, entry in ipairs(entries) do
             local pattern = type(entry) == "table" and entry.pattern or nil
             if type(pattern) == "string"
@@ -325,6 +326,33 @@ return function(config, utils, cache)
             end
         end
         return nil
+    end
+
+    local function findExactHuntingRequirement(definition)
+        local map = config.HUNTING_LOOT_MAP
+        local entries = type(map) == "table" and map.items or nil
+        if type(entries) ~= "table" then return nil, nil end
+
+        for _, entry in ipairs(entries) do
+            local asClass = type(entry) == "table" and entry.as_class or nil
+            local objectPath = type(asClass) == "string"
+                and asClass:match("(/Script/Angelscript%.[%w_]+)")
+                or nil
+            if objectPath ~= nil then
+                local resolved = huntingDefinitionObjects[objectPath]
+                if resolved == nil then
+                    local ok, found = pcall(function()
+                        return StaticFindObject(objectPath)
+                    end)
+                    resolved = ok and utils.isValid(found) and found or false
+                    huntingDefinitionObjects[objectPath] = resolved
+                end
+                if resolved ~= false and definition == resolved then
+                    return entry, asClass
+                end
+            end
+        end
+        return nil, nil
     end
 
     local function getPlayerAbilitySystem(pawn)
@@ -524,29 +552,40 @@ return function(config, utils, cache)
                 local count = utils.getProp(slotData, "m_ItemCount")
                 local itemInventoryType = getInventoryType(utils.getProp(item, "m_InventoryType"))
                     or inventoryType
-                -- Only MainContainer is presented as carried loot. Equipped
-                -- weapons, armor, rings, and quick slots remain on the actor
-                -- after looting and must not keep the corpse highlighted.
-                local isLootInventory = itemInventoryType == nil or itemInventoryType == 1
+                -- Corpse weapons observed in the loot UI use inventory type 3.
+                -- Do not inspect arbitrary equipment definitions here: some
+                -- non-loot equipment slots expose unsafe/stale UObject values.
+                local isLootInventory = itemInventoryType == nil
+                    or itemInventoryType == 1
+                    or itemInventoryType == 3
                 if isLootInventory
                     and utils.isValid(definition)
                     and type(count) == "number"
                     and count > 0 then
-                    addDiscoveredHuntingItem(definition)
+                    -- Prefer exact class-object mappings so known internal
+                    -- definitions never require a native GetFullName call.
+                    local requirement, identity = findExactHuntingRequirement(definition)
+                    if identity == nil and itemInventoryType == 3 and not respectHuntingSkills then
+                        identity = "lootable weapon slot"
+                    elseif identity == nil then
+                        -- Resolve unknown definitions once; reuse the result for
+                        -- discovery, matching, and diagnostics.
+                        identity = getItemIdentity(definition)
+                        requirement = findHuntingRequirement(identity)
+                    end
+                    addDiscoveredHuntingItem(identity)
                     total = total + 1
                     local accessibleItem = true
-                    local requirement = nil
                     local skillState = "not_mapped"
-                    if respectHuntingSkills then
-                        requirement = findHuntingRequirement(definition)
-                        if requirement ~= nil then
+                    if requirement ~= nil then
+                        if requirement.ignore == true then
+                            accessibleItem = false
+                            skillState = "ignored"
+                        elseif respectHuntingSkills then
                             local requiresNoSkill = requirement.skill == false
                             local hasAssignedSkill = type(requirement.skill) == "string"
                                 or (type(requirement.skills) == "table" and #requirement.skills > 0)
-                            if requirement.ignore == true then
-                                accessibleItem = false
-                                skillState = "ignored"
-                            elseif requiresNoSkill then
+                            if requiresNoSkill then
                                 skillState = "free"
                             elseif hasAssignedSkill then
                                 local met = requirementIsMet(abilitySystem, requirement)
@@ -560,7 +599,7 @@ return function(config, utils, cache)
                     end
                     if accessibleItem then accessible = accessible + 1 end
                     details[#details + 1] = {
-                        identity = getItemIdentity(definition),
+                        identity = identity,
                         count = count,
                         inventory_type = itemInventoryType,
                         skill_state = skillState,
@@ -581,25 +620,6 @@ return function(config, utils, cache)
     local function getContainerLootCount(actor)
         local total, _, source = getContainerLootState(actor, nil, false)
         return total, source
-    end
-
-    local function logHuntingSkillState(pawn)
-        if not config.LOG_CORPSE_STATE then return end
-        local map = config.HUNTING_LOOT_MAP
-        local skills = type(map) == "table" and map.known_skills or nil
-        if type(skills) ~= "table" then return end
-
-        local abilitySystem = getPlayerAbilitySystem(pawn)
-        for _, skillName in ipairs(skills) do
-            local learned, reason = hasHuntingSkill(abilitySystem, skillName)
-            local state = learned == true and "learned"
-                or (learned == false and "not_learned" or "unknown")
-            utils.log(
-                "HuntingSkill " .. tostring(skillName)
-                .. " state=" .. state
-                .. " probe=" .. tostring(reason)
-            )
-        end
     end
 
     local function unwrapEnumValue(value)
@@ -851,7 +871,10 @@ return function(config, utils, cache)
                 pawn,
                 config.RESPECT_HUNTING_SKILLS
             )
-            local itemCount = config.RESPECT_HUNTING_SKILLS and accessibleCount or totalCount
+            -- accessibleCount always removes unconditional ignore mappings. When
+            -- hunting-skill filtering is disabled, every other item remains
+            -- accessible, so this is also the correct effective loot count.
+            local itemCount = accessibleCount
             utils.debugLog(
                 "CorpseInventory " .. tostring(utils.getAddress(actor) or "unknown")
                 .. " total=" .. tostring(totalCount)
@@ -874,21 +897,7 @@ return function(config, utils, cache)
             end
         end
 
-        local mesh = utils.getProp(actor, "Mesh")
-        if utils.isValid(mesh) then
-            return true, mesh
-        end
-
         return true, component
-    end
-
-    local function resolveCorpseOutlineComponent(actor)
-        local mesh = utils.getProp(actor, "Mesh")
-        if utils.isValid(mesh) then
-            return mesh
-        end
-
-        return utils.getInteractiveComponent(actor)
     end
 
     local function hasLiveContainerLoot(actor, address, fullName)
@@ -1173,15 +1182,15 @@ return function(config, utils, cache)
             return false
         end
 
-        local ok = pcall(function()
-            subsystem:AddOutline(
+        local ok, accepted = pcall(function()
+            return subsystem:AddOutline(
                 component,
                 stencilUsage or config.STENCIL_USAGE,
                 config.USE_THICK_OUTLINE
             )
         end)
 
-        if not ok then
+        if not ok or accepted == false then
             return false
         end
 
@@ -1280,7 +1289,12 @@ return function(config, utils, cache)
                         end
                     elseif targetKind == "corpse" then
                         local lootable, component = isLootableCorpse(actor, pawn)
-                        if lootable and addHighlight(subsystem, actor, component, resolveCorpseOutlineComponent) then
+                        if lootable and addHighlight(
+                            subsystem,
+                            actor,
+                            component,
+                            utils.getInteractiveComponent
+                        ) then
                             state.count = state.count + 1
                         end
                     else
@@ -1338,7 +1352,6 @@ return function(config, utils, cache)
         end
 
         checkWorldReload(pawn)
-        logHuntingSkillState(pawn)
         local subsystem = getOutlineSubsystem(pawn)
 
         if not utils.isValid(subsystem) then
